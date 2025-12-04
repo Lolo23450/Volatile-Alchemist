@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>The Volatile Alchemist: Shop Overhaul</title>
+    <style>
+        :root {
+            --bg: #050505;
+            --panel: #1e1e24;
+            --fire: #ff4d4d;
+            --nature: #2ecc71;
+            --frost: #3498db;
+            --void: #9b59b6;
+            --stab: #f1c40f;
+            --pop: #e91e63;
+            --text: #ecf0f1;
+            --danger: #e74c3c;
+            --rare: #00d2d3;
+            --epic: #a29bfe;
+
+            /* Dynamic Lighting Variables */
+            --glow-r: 0;
+            --glow-g: 0;
+            --glow-b: 0;
+            --liquid-height: 0%;
+        }
+
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: var(--bg);
+            background-image: 
+                radial-gradient(
+                    circle at 50% 55%, 
+                    rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.35) 0%, 
+                    rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.1) 40%, 
+                    rgba(0,0,0,1) 90%
+                );
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
+            transition: background-image 0.2s ease;
+        }
+
+        /* LAYOUT */
+        #top-bar {
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(5px);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #333;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+            height: 40px;
+            flex-shrink: 0;
+            z-index: 200;
+        }
+        .res { font-weight: bold; font-size: 1.1em; margin-right: 20px; display: flex; align-items: center; gap: 10px; text-shadow: 0 0 5px rgba(0,0,0,0.5); }
+        .btn-help, .btn-sm { background: #333; color: #fff; border: 1px solid #555; padding: 5px 15px; cursor: pointer; border-radius: 4px; font-family: inherit; font-size: 0.8em; }
+        .btn-help:hover, .btn-sm:hover { background: #555; }
+
+        #main-stage {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 50px;
+            padding: 20px;
+            overflow-y: auto;
+            position: relative;
+            flex-wrap: wrap;
+            z-index: 50;
+        }
+        
+        #main-stage::-webkit-scrollbar { width: 8px; }
+        #main-stage::-webkit-scrollbar-track { background: #111; }
+        #main-stage::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+
+        /* CUSTOMER TICKET */
+        .ticket {
+            width: 240px;
+            background: #f4f4f4;
+            color: #222;
+            padding: 20px;
+            transform: rotate(-2deg);
+            box-shadow: 10px 10px 30px rgba(0,0,0,0.5);
+            font-family: 'Segoe UI', sans-serif;
+            position: relative;
+            z-index: 10;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+        .ticket::after {
+            content: '';
+            position: absolute; top: -10px; left: 50%;
+            width: 15px; height: 15px;
+            background: #444; border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+        .ticket h3 { margin: 0 0 10px 0; text-transform: uppercase; border-bottom: 2px dashed #000; padding-bottom: 5px; font-size: 1.1em; letter-spacing: 1px; }
+        .req-row { display: flex; justify-content: space-between; margin: 6px 0; font-weight: bold; }
+        .tolerance-msg { margin-top: 10px; font-size: 0.8em; font-style: italic; color: #c0392b; }
+
+        /* CAULDRON UI */
+        #cauldron-area {
+            width: 340px;
+            text-align: center;
+            z-index: 10;
+            flex-shrink: 0;
+            margin-bottom: 20px;
+        }
+        .pot-stats {
+            background: rgba(20, 20, 20, 0.7);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        .stat-line { display: flex; align-items: center; justify-content: space-between; margin: 5px 0; font-size: 0.9em; font-weight: bold; }
+        .bar-bg { flex: 1; height: 6px; background: #333; margin: 0 10px; border-radius: 4px; overflow: hidden; position: relative; box-shadow: inset 0 1px 3px #000; }
+        .bar-fill { height: 100%; transition: width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); box-shadow: 0 0 10px currentColor; }
+        
+        .stab-meter { height: 12px; border: 1px solid #444; }
+        .stab-fill { background: var(--stab); width: 100%; transition: width 0.2s, background-color 0.2s; box-shadow: 0 0 15px var(--stab); }
+
+        /* RTX CAULDRON VISUAL */
+        #pot-visual {
+            width: 220px; height: 220px;
+            background: linear-gradient(135deg, #222 0%, #000 100%);
+            border-radius: 50%;
+            border: 8px solid #333;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 
+                inset 0 0 60px #000,
+                0 0 20px 5px rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.6),
+                0 0 60px 20px rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.3),
+                0 0 100px 40px rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.1);
+            transition: transform 0.1s, box-shadow 0.3s;
+            z-index: 50;
+        }
+        .pot-pulse { transform: scale(1.02); filter: brightness(1.2); }
+
+        #liquid {
+            position: absolute; bottom: 0; left: 0; width: 100%; 
+            height: var(--liquid-height);
+            background: linear-gradient(to top, 
+                rgba(var(--glow-r), var(--glow-g), var(--glow-b), 0.8) 0%,
+                rgba(var(--glow-r), var(--glow-g), var(--glow-b), 1) 100%
+            );
+            transition: height 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+            box-shadow: 
+                0 -5px 20px rgba(var(--glow-r), var(--glow-g), var(--glow-b), 1),
+                inset 0 0 30px rgba(0,0,0,0.5);
+        }
+        #liquid::after {
+            content:''; position: absolute; top:0; left:0; right:0; height: 8px;
+            background: rgba(255,255,255,0.4);
+            border-radius: 50%;
+            transform: scaleY(0.4);
+            filter: blur(1px);
+            opacity: 0.7;
+        }
+        
+        .splash-ring {
+            position: absolute;
+            border: 3px solid rgba(255,255,255,0.8);
+            border-radius: 50%;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            width: 10px; height: 10px;
+            pointer-events: none;
+            box-shadow: 0 0 10px rgba(var(--glow-r), var(--glow-g), var(--glow-b), 1);
+            animation: splashAnim 0.6s ease-out forwards;
+        }
+        @keyframes splashAnim {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 1; border-width: 4px; }
+            100% { transform: translate(-50%, -50%) scale(5); opacity: 0; border-width: 0px; }
+        }
+
+        .particle {
+            position: absolute; pointer-events: none; border-radius: 50%; z-index: 20;
+            box-shadow: 0 0 10px currentColor;
+        }
+        @keyframes floatUpFade {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+        }
+
+        @keyframes shake { 0% { transform: translate(0,0) } 25% { transform: translate(5px,0) } 75% { transform: translate(-5px,0) } 100% { transform: translate(0,0) } }
+        .shaking { animation: shake 0.2s infinite; }
+
+        /* BUTTONS */
+        .btn-group { display: flex; gap: 10px; margin-top: 15px; position: relative; z-index: 20; }
+        button {
+            flex: 1; padding: 12px; border: none; border-radius: 4px; font-weight: bold;
+            cursor: pointer; text-transform: uppercase; font-family: inherit; transition: 0.2s;
+        }
+        .btn-brew { background: var(--nature); color: #000; box-shadow: 0 4px 0 #219150; }
+        .btn-brew:hover { background: #27ae60; transform: translateY(2px); box-shadow: 0 0 15px var(--nature); }
+        .btn-brew:active { transform: translateY(4px); box-shadow: none; }
+        
+        .btn-cycle { background: transparent; border: 1px solid var(--stab); color: var(--stab); }
+        .btn-cycle:hover { background: rgba(241, 196, 15, 0.1); box-shadow: 0 0 10px var(--stab); }
+
+        /* --- NEW: RELIC AREA --- */
+        #relic-container {
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            flex-shrink: 0;
+            z-index: 90;
+        }
+        .relic-item {
+            width: 40px; height: 40px;
+            background: #111;
+            border: 2px solid #555;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5em;
+            cursor: help;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5), inset 0 0 5px #000;
+            transition: 0.2s;
+        }
+        .relic-item:hover {
+            border-color: var(--stab);
+            box-shadow: 0 0 15px var(--stab);
+            transform: scale(1.1);
+        }
+
+        /* HAND AREA */
+        #hand-container {
+            height: 240px; 
+            background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0));
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            padding: 0 20px;
+            perspective: 1000px;
+            flex-shrink: 0;
+            z-index: 100;
+            position: relative;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+        }
+        
+        .card {
+            width: 140px; height: 200px;
+            background: #1a1a24;
+            border: 2px solid #444;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            box-sizing: border-box;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            flex-shrink: 0;
+        }
+        .card:hover { 
+            transform: translateY(-50px) scale(1.1); 
+            z-index: 1000; 
+            border-color: #fff;
+            box-shadow: 0 0 20px rgba(255,255,255,0.2); 
+        }
+
+        .card-header { font-size: 0.85em; font-weight: bold; text-align: center; margin-bottom: 5px; color: #fff; text-shadow: 0 2px 2px #000; }
+        .card-art { flex: 1; background: #080808; margin-bottom: 5px; border-radius: 4px; display: flex; justify-content: center; align-items: center; font-size: 2em; box-shadow: inset 0 0 10px #000; }
+        .card-desc { font-size: 0.7em; text-align: center; color: #aaa; line-height: 1.3; }
+        .card-cost { 
+            font-size: 0.7em; text-align: center; margin-top: 5px; padding-top: 5px; border-top: 1px solid #333; 
+            color: var(--stab); font-weight: bold;
+        }
+        .card-count {
+            position: absolute; top: -10px; right: -10px;
+            background: var(--danger); color: white;
+            width: 25px; height: 25px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 0.8em;
+            box-shadow: 0 2px 5px #000; z-index: 101;
+            border: 2px solid #fff;
+        }
+
+        .rare .card-header { color: var(--rare); text-shadow: 0 0 8px var(--rare); }
+        .epic .card-header { color: var(--epic); text-shadow: 0 0 8px var(--epic); }
+        .rare { border-color: var(--rare); box-shadow: 0 5px 15px rgba(0,210,211,0.2); }
+        .epic { border-color: var(--epic); box-shadow: 0 5px 15px rgba(162,155,254,0.2); }
+
+        .type-fire { border-top: 4px solid var(--fire); }
+        .type-nature { border-top: 4px solid var(--nature); }
+        .type-frost { border-top: 4px solid var(--frost); }
+        .type-void { border-top: 4px solid var(--void); }
+
+        @media (max-height: 750px) {
+            #pot-visual { width: 160px; height: 160px; }
+            .ticket { width: 200px; padding: 15px; font-size: 0.9em; }
+            #hand-container { height: 190px; }
+            #relic-container { height: 50px; }
+            .relic-item { width: 35px; height: 35px; font-size: 1.2em; }
+            .card { width: 110px; height: 160px; }
+            .card-art { font-size: 1.5em; }
+            #main-stage { gap: 20px; }
+            .pot-stats { padding: 10px; margin-bottom: 10px; }
+            .stat-line { margin: 2px 0; }
+        }
+
+        /* OVERLAYS */
+        #overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(5px);
+            display: none;
+            z-index: 999;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 5vh 2vw;
+            overflow-y: auto;
+        }
+        #tutorial-overlay, #deck-overlay, #options-overlay, #result-overlay, #game-over-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(5px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 999; display: none;
+        }
+
+        #result-overlay { z-index: 2000; }
+        #game-over-overlay { z-index: 3000; background: rgba(20, 0, 0, 0.95); }
+
+        .result-box { 
+            background: #1a1a1a; border: 1px solid #444; padding: 40px; border-radius: 10px; text-align: center; 
+            box-shadow: 0 0 50px rgba(0,0,0,0.8); transform: scale(0.8); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes popIn { to { transform: scale(1); } }
+        
+        #deck-overlay { z-index: 1001; display: none; align-items: center; justify-content: flex-start; padding-top: 40px; }
+        .deck-view-container {
+            width: 90%; max-width: 1200px; height: 85vh;
+            display: flex; flex-direction: column;
+            background: #111; border: 1px solid #333; border-radius: 8px; padding: 20px;
+        }
+        .deck-header { flex-shrink: 0; text-align: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 15px; }
+        .deck-scroll-area { flex: 1; overflow-y: auto; padding: 10px; }
+        .deck-scroll-area::-webkit-scrollbar { width: 8px; }
+        .deck-scroll-area::-webkit-scrollbar-track { background: #222; }
+        .deck-scroll-area::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        
+        .shop-btn { padding: 10px 30px; background: #333; color: white; border: 1px solid #555; cursor: pointer; transition: 0.2s;}
+        .shop-btn:hover { background: #444; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+
+        .tut-box { max-width: 600px; padding: 30px; background: #1a1a1a; border: 1px solid #444; border-radius: 8px; box-shadow: 0 0 30px #000; }
+        .opt-row { display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 400px; margin: 15px 0; background: #222; padding: 15px; border-radius: 8px; }
+        .switch { position: relative; display: inline-block; width: 50px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--nature); }
+        input:checked + .slider:before { transform: translateX(26px); }
+
+        .float-text {
+            position: absolute; font-weight: bold; pointer-events: none;
+            font-size: 1.2em;
+            animation: floatUp 1s forwards; text-shadow: 2px 2px 0 #000; z-index: 50;
+        }
+        @keyframes floatUp { 
+            0% { transform: translateY(0) scale(0.5); opacity: 0; }
+            20% { transform: translateY(-10px) scale(1.2); opacity: 1; }
+            100% { transform: translateY(-60px) scale(1); opacity: 0; } 
+        }
+
+        /* --- SHOP STYLES --- */
+        #shop-content-wrapper {
+            width: auto; max-width: 950px; background: rgba(20, 20, 25, 0.9);
+            border: 1px solid #444; border-radius: 12px; padding: 25px;
+            box-shadow: 0 0 60px rgba(0,0,0,0.6); display: flex; flex-direction: column;
+            align-items: center; transform: scale(0.9);
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        #ov-title { font-size: 2.2em; margin-bottom: 5px; }
+        #ov-desc { margin-bottom: 25px; }
+        #shop-main-container {
+            display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center;
+            gap: 20px; width: 100%;
+        }
+        .shop-section {
+            background: rgba(10,10,10,0.5); border: 1px solid #333; border-radius: 8px;
+            padding: 15px 20px; flex: 1 1 300px; min-width: 280px;
+        }
+        .shop-section-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 15px;
+        }
+        .shop-section-header h2 { margin: 0; font-size: 1.3em; }
+        .shop-section-header span { color: var(--stab); font-weight: bold; }
+        .shop-card-grid { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
+        .shop-card { width: 120px; height: 170px; font-size: 0.9em; transform: none !important; }
+        .shop-card .card-art { font-size: 1.8em; }
+        .shop-card:hover { transform: scale(1.05) !important; z-index: 1001; }
+        .shop-card.chosen { border-color: var(--stab); box-shadow: 0 0 20px var(--stab); }
+        .shop-section.locked .shop-card:not(.chosen) { opacity: 0.3; cursor: not-allowed; filter: grayscale(80%); }
+
+    </style>
+</head>
+<body>
+
+<div id="top-bar">
+    <div style="display:flex">
+        <div class="res">Day: <span id="ui-day">1</span></div>
+        <div class="res" style="color:var(--pop)">Pop: <span id="ui-pop">50</span>%</div>
+        <div class="res" style="color:#aaa">Cust: <span id="ui-cust">1/3</span></div>
+        <div class="res" style="color:gold">Gold: <span id="ui-gold">0</span></div>
+        <div class="res" style="color:#888; border-left:1px solid #333; padding-left:20px">
+            Deck: <span id="ui-deck-count">10</span>
+            <button class="btn-sm" onclick="game.showDeck()">View Deck</button>
+        </div>
+    </div>
+    <div style="display:flex; gap: 10px;">
+        <button class="btn-sm" onclick="game.showOptions()">Options</button>
+        <button class="btn-help" onclick="game.showTutorial()">Help</button>
+    </div>
+</div>
+
+<div id="main-stage">
+    <div class="ticket">
+        <h3 id="c-name">Customer</h3>
+        <div id="c-reqs"></div>
+        <div id="c-ban" class="tolerance-msg"></div>
+    </div>
+    <div id="cauldron-area">
+        <div class="pot-stats">
+            <div class="stat-line"><span style="color:var(--fire)">Fire</span><div class="bar-bg"><div id="bar-r" class="bar-fill" style="background:var(--fire); width:0%"></div></div><span id="val-r">0</span></div>
+            <div class="stat-line"><span style="color:var(--nature)">Nature</span><div class="bar-bg"><div id="bar-g" class="bar-fill" style="background:var(--nature); width:0%"></div></div><span id="val-g">0</span></div>
+            <div class="stat-line"><span style="color:var(--frost)">Frost</span><div class="bar-bg"><div id="bar-b" class="bar-fill" style="background:var(--frost); width:0%"></div></div><span id="val-b">0</span></div>
+        </div>
+        <div id="pot-visual"><div id="liquid"></div></div>
+        <div style="margin-top:10px; font-size:0.8em; color:var(--stab); font-weight:bold;">STABILITY</div>
+        <div class="bar-bg stab-meter"><div id="bar-stab" class="bar-fill stab-fill"></div></div>
+        <div id="stab-text" style="font-size:0.8em; margin-bottom:10px;">20/20</div>
+        <div class="btn-group">
+            <button id="btn-cycle-hand" class="btn-cycle" onclick="game.recycleHand()" title="Draw new cards"></button>
+            <button class="btn-brew" onclick="game.servePotion()">SERVE POTION</button>
+        </div>
+    </div>
+</div>
+
+<!-- NEW: Relic Container -->
+<div id="relic-container"></div>
+
+<div id="hand-container"></div>
+
+<!-- Custom Result Overlay -->
+<div id="result-overlay">
+    <div class="result-box">
+        <h1 id="res-title" style="margin:0; font-size: 2em;">Masterpiece!</h1>
+        <p id="res-msg" style="color:#aaa; margin: 10px 0 20px 0;">The customer is delighted.</p>
+        <div style="font-size:1.5em; color:gold; margin-bottom:10px;">+<span id="res-gold">50</span> Gold</div>
+        <div style="font-size:1.2em; color:var(--pop);" id="res-pop-change">+5 Popularity</div>
+        <br>
+        <button class="btn-brew" onclick="document.getElementById('result-overlay').style.display='none'; game.finishCustomer()">Continue</button>
+    </div>
+</div>
+
+<!-- GAME OVER OVERLAY -->
+<div id="game-over-overlay">
+    <div class="result-box" style="border-color:var(--danger); box-shadow: 0 0 50px rgba(231, 76, 60, 0.4);">
+        <h1 id="go-title" style="color:var(--danger); font-size: 3em; margin: 0 0 10px 0;">LAB DESTROYED</h1>
+        <p id="go-msg" style="color:#fff; font-size: 1.2em; margin-bottom: 30px;">Your volatile mixture exploded.</p>
+        <button class="btn-brew" style="background:var(--danger); box-shadow: 0 4px 0 #c0392b;" onclick="game.hardReset()">Try Again</button>
+    </div>
+</div>
+
+<!-- Tutorial -->
+<div id="tutorial-overlay">
+    <div class="tut-box">
+        <h2 style="color:var(--stab); margin-top:0">The Alchemist's Guide</h2>
+        <div class="tut-row"><div class="tut-icon">📜</div><div><strong>The Order:</strong> Fulfill the Customer's needs. Watch out for allergies.</div></div>
+        <div class="tut-row"><div class="tut-icon">💗</div><div><strong>Popularity:</strong> Bad brews lower popularity. If it hits 0%, you are shut down. High popularity attracts more customers.</div></div>
+        <div class="tut-row"><div class="tut-icon">🃏</div><div><strong>Stability:</strong> Keep an eye on Stability. If it hits 0, the lab explodes.</div></div>
+        <button class="shop-btn" style="width:100%; margin-top:10px" onclick="document.getElementById('tutorial-overlay').style.display='none'">Start Brewing</button>
+    </div>
+</div>
+
+<!-- Options -->
+<div id="options-overlay">
+    <div class="tut-box" style="text-align:center;">
+        <h2 style="color:white; margin-top:0">Options</h2>
+        <div class="opt-row">
+            <span>Stack Duplicate Cards in Hand</span>
+            <label class="switch">
+                <input type="checkbox" id="opt-stack-hand" onchange="game.toggleStacking(this.checked)">
+                <span class="slider"></span>
+            </label>
+        </div>
+        <button class="shop-btn" style="background:var(--danger)" onclick="document.getElementById('options-overlay').style.display='none'">Close</button>
+    </div>
+</div>
+
+<!-- Deck View -->
+<div id="deck-overlay">
+    <div class="deck-view-container">
+        <div class="deck-header">
+            <h2 style="color:white; margin-top:0;">Your Deck</h2>
+            <p style="color:#aaa; margin-bottom:15px; font-size:0.9em;">Duplicates are stacked.</p>
+            <button class="shop-btn" style="background:var(--danger);" onclick="document.getElementById('deck-overlay').style.display='none'">Close View</button>
+        </div>
+        <div id="deck-grid-content" class="shop-card-grid deck-scroll-area"></div>
+    </div>
+</div>
+
+<!-- Shop / End Screen -->
+<div id="overlay">
+    <div id="shop-content-wrapper">
+        <h1 id="ov-title" style="color:#fff">Day Complete</h1>
+        <div id="ov-desc" style="color:#ccc; text-align:center"></div>
+        <div id="shop-main-container"></div>
+        <div style="display: flex; gap: 20px; margin-top: 30px;">
+            <button class="btn-sm" style="background:#555; color:gold;" onclick="game.rerollShop()">Reroll Shop (20g)</button>
+            <button class="shop-btn" style="background:var(--nature)" onclick="game.nextDay()">Next Day</button>
+        </div>
+    </div>
+</div>
+
+<script>
+/* --- CONFIG & CARDS --- */
+const RELICS_DB = [
+    { id: 'reinforced_beaker', name: 'Reinforced Beaker', icon: '🧪', price: 70, desc: 'Start each day with +5 Maximum Stability.' },
+    { id: 'tome_of_plenty', name: 'Tome of Plenty', icon: '📖', price: 90, desc: 'Draw 1 extra card each time you draw.' },
+    { id: 'scholars_lens', name: "Scholar's Lens", icon: '🧐', price: 80, desc: "When a customer arrives, automatically add 20% of their highest requirement to the cauldron." },
+    { id: 'merchants_coin', name: "Merchant's Coin", icon: '🪙', price: 60, desc: 'All cards and relics in the shop cost 20% less.' },
+    { id: 'golden_ladle', name: 'Golden Ladle', icon: '🥄', price: 75, desc: 'Gain +5 bonus Gold for every "Great Brew" or "Masterpiece" you create.' },
+    { id: 'alchemists_timepiece', name: "Alchemist's Timepiece", icon: '⌛', price: 65, desc: "Your first hand redraw is free each day." },
+];
+
+const CARDS_DB = [
+    // Basics (Common)
+    { id: 'ember', rarity:'common', name: 'Ember', type: 'fire', icon: '🔥', cost: 1, desc: '+3 Fire', shop_category: 'basic', fn: (p) => { p.r += 3; p.s -= 1; } },
+    { id: 'spark', rarity:'common', name: 'Spark', type: 'fire', icon: '⚡', cost: 2, desc: '+6 Fire', shop_category: 'basic', fn: (p) => { p.r += 6; p.s -= 2; } },
+    { id: 'root', rarity:'common', name: 'Root', type: 'nature', icon: '🌱', cost: 1, desc: '+3 Nature', shop_category: 'basic', fn: (p) => { p.g += 3; p.s -= 1; } },
+    { id: 'bloom', rarity:'common', name: 'Bloom', type: 'nature', icon: '🌿', cost: 2, desc: '+6 Nature', shop_category: 'basic', fn: (p) => { p.g += 6; p.s -= 2; } },
+    { id: 'drop', rarity:'common', name: 'Drop', type: 'frost', icon: '💧', cost: 1, desc: '+3 Frost', shop_category: 'basic', fn: (p) => { p.b += 3; p.s -= 1; } },
+    { id: 'ice', rarity:'common', name: 'Ice', type: 'frost', icon: '❄️', cost: 2, desc: '+6 Frost', shop_category: 'basic', fn: (p) => { p.b += 6; p.s -= 2; } },
+    
+    // Stabilizers (Common/Rare)
+    { id: 'salt', rarity:'common', name: 'Salt', type: 'void', icon: '🧂', cost: 0, desc: '+4 Stab\n-1 All Stats', shop_category: 'stabilizer', fn: (p) => { p.s += 4; p.r=Math.max(0,p.r-1); p.g=Math.max(0,p.g-1); p.b=Math.max(0,p.b-1); } },
+    { id: 'spice', rarity:'rare', name: 'Spice', type: 'void', icon: '🧂', cost: 0, desc: '+8 Stab\n-2 All Stats', shop_category: 'stabilizer', fn: (p) => { p.s += 6; p.r=Math.max(0,p.r-2); p.g=Math.max(0,p.g-2); p.b=Math.max(0,p.b-2); } },
+    { id: 'vent', rarity:'common', name: 'Vent', type: 'void', icon: '💨', cost: 0, desc: '+12 Stab\nHalve All Stats', shop_category: 'stabilizer', fn: (p) => { p.s += 8; p.r=Math.floor(p.r/2); p.g=Math.floor(p.g/2); p.b=Math.floor(p.b/2); } },
+
+    // Void Cards
+    { id: 'catalyst_r', rarity:'rare', name: 'Ignite', type: 'fire', icon: '🧨', cost: 4, desc: 'Double current Fire', shop_category: 'void', fn: (p) => { p.r *= 2; p.s -= 4; } },
+    { id: 'balance', rarity:'rare', name: 'Balance', type: 'void', icon: '⚖️', cost: 2, desc: 'Set all stats to average', shop_category: 'void', fn: (p) => { let avg = Math.floor((p.r+p.g+p.b)/3); p.r=avg; p.g=avg; p.b=avg; p.s -= 2; } },
+    { id: 'void_focus', rarity:'rare', name: 'Focus', type: 'void', icon: '👁️', cost: 0, desc: '+2 Stab\nDraw 1 Card', shop_category: 'void', fn: (p, g) => { p.s += 2; g.drawCards(1); } },
+    { id: 'study', rarity:'common', name: 'Study', type: 'void', icon: '📖', cost: 2, desc: 'Draw 2 Cards', shop_category: 'void', fn: (p, g) => { p.s -= 2; g.drawCards(2); } },
+    { id: 'purify', rarity:'common', name: 'Purify', type: 'void', icon: '✨', cost: 0, desc: 'Remove all Fire\n+6 Stab', shop_category: 'stabilizer', fn: (p) => { p.r = 0; p.s += 6; } },
+    { id: 'overgrowth', rarity:'rare', name: 'Overgrowth', type: 'nature', icon: '🌲', cost: 4, desc: 'Double current Nature', shop_category: 'void', fn: (p) => { p.g *= 2; p.s -= 4; } },
+    { id: 'gamble', rarity:'rare', name: 'Risk', type: 'void', icon: '🎲', cost: 1, desc: 'Randomize Stats (0-20)', shop_category: 'void', fn: (p) => { p.r=Math.floor(Math.random()*21); p.g=Math.floor(Math.random()*21); p.b=Math.floor(Math.random()*21); p.s-=1; } },
+    { id: 'black_hole', rarity:'epic', name: 'Black Hole', type: 'void', icon: '⚫', cost: 0, desc: 'Reset ALL to 0\n+15 Stab', shop_category: 'void', fn: (p) => { p.r=0; p.g=0; p.b=0; p.s+=15; } },
+    { id: 'reinforce', rarity:'rare', name: 'Reinforce', type: 'void', icon: '🏗️', cost: 1, desc: '+6 MAX Stab\n(Until End of Day)', shop_category: 'stabilizer', fn: (p) => { p.s -= 1; p.maxS += 6; } },
+
+    // More basic stat cards
+    { id: 'alloy', rarity:'rare', name: 'Alloy', type: 'fire', icon: '🔩', cost: 3, desc: '+5 Fire\n+5 Frost', shop_category: 'basic', fn: (p) => { p.r+=5; p.b+=5; p.s-=3; } },
+    { id: 'burn', rarity:'rare', name: 'Burn', type: 'fire', icon: '🕯️', cost: 2, desc: 'Convert all Nature to Fire', shop_category: 'void', fn: (p) => { p.r += p.g; p.g = 0; p.s -= 1; } },
+    { id: 'chill', rarity:'rare', name: 'Chill', type: 'frost', icon: '🥶', cost: 2, desc: 'Convert all Fire to Frost', shop_category: 'void', fn: (p) => { p.b += p.r; p.r = 0; p.s -= 1; } },
+    { id: 'inferno', rarity:'epic', name: 'Inferno', type: 'fire', icon: '🔥', cost: 8, desc: 'Set Fire to 50\nSet Stab to 3', shop_category: 'void', fn: (p) => { p.r = 50; p.s = 3; } },
+    { id: 'glacier', rarity:'epic', name: 'Glacier', type: 'frost', icon: '🏔️', cost: 5, desc: '+15 Frost\n-5 Fire', shop_category: 'void', fn: (p) => { p.b += 15; p.r = Math.max(0, p.r - 5); p.s -= 5; } },
+    
+    // Power Cards
+    { id: 'nova', rarity:'rare', name: 'Nova', type: 'fire', icon: '💥', cost: 3, desc: '+9 Fire', shop_category: 'basic', fn: (p) => { p.r += 9; p.s -= 3; } },
+    { id: 'forest', rarity:'rare', name: 'Forest', type: 'nature', icon: '🌴', cost: 3, desc: '+9 Nature', shop_category: 'basic', fn: (p) => { p.g += 9; p.s -= 3; } },
+    { id: 'blizzard', rarity:'rare', name: 'Blizzard', type: 'frost', icon: '🌨️', cost: 3, desc: '+9 Frost', shop_category: 'basic', fn: (p) => { p.b += 9; p.s -= 3; } },
+
+    // Combo Cards
+    { id: 'phoenix', rarity:'epic', name: 'Phoenix', type: 'fire', icon: '🦅', cost: 4, desc: '+8 Fire\nIf Stab < 5: Set Stab to 10', shop_category: 'void', fn: (p, g) => { 
+        p.r += 8; p.s -= 4; 
+        if(p.s < 5) { p.s = 10; g.spawnFloat("Reborn!", "gold"); } 
+    }},
+    { id: 'mudslide', rarity:'rare', name: 'Mudslide', type: 'nature', icon: '🌊', cost: 3, desc: '+5 Nature\n+5 Frost', shop_category: 'basic', fn: (p) => { p.g += 5; p.b += 5; p.s -= 3; } },
+    { id: 'steam_engine', rarity:'rare', name: 'Steam Engine', type: 'frost', icon: '🚂', cost: 2, desc: '+6 Frost\nIf Fire > 10: +4 Stab', shop_category: 'void', fn: (p, g) => { 
+        p.b += 6; p.s -= 2;
+        if(p.r > 10) { p.s += 4; g.spawnFloat("Powered!", "#fff"); }
+    }},
+    { id: 'steam_blast', rarity:'rare', name: 'Steam Blast', type: 'frost', icon: '🌫️', cost: 3, desc: '+8 Frost\nIf Last was Fire: +4 Stab', shop_category: 'void', fn: (p, g) => { 
+        p.b += 8; p.s -= 3;
+        if(g.lastPlayedType === 'fire') { p.s += 4; g.spawnFloat("Combo!", "#fff"); }
+    }},
+    { id: 'wildfire', rarity:'epic', name: 'Wildfire', type: 'fire', icon: '🌋', cost: 4, desc: '+5 Fire\n+3 for every Fire in hand', shop_category: 'void', fn: (p, g) => {
+        let bonus = 0;
+        g.hand.forEach(hid => {
+            const card = CARDS_DB.find(c => c.id === hid);
+            if(card.type === 'fire' && card.id !== 'wildfire') bonus += 3;
+        });
+        p.r += 5 + bonus; p.s -= 4;
+        if(bonus>0) g.spawnFloat(`+${bonus} Bonus`, "var(--fire)");
+    }},
+    { id: 'permafrost', rarity:'epic', name: 'Permafrost', type: 'frost', icon: '🧊', cost: 3, desc: '+6 Frost\nNext Card costs 0 Stab', shop_category: 'void', fn: (p, g) => { 
+        p.b += 6; p.s -= 3;
+        g.nextCardFree = true;
+    }},
+    { id: 'photosynthesis', rarity:'rare', name: 'Growth', type: 'nature', icon: '🌻', cost: 2, desc: '+5 Nature\nIf Stab < 10: +10 instead', shop_category: 'void', fn: (p) => {
+        if(p.s < 10) { p.g += 10; } else { p.g += 5; }
+        p.s -= 2;
+    }}
+];
+
+/* --- ENGINE --- */
+class Game {
+    constructor() {
+        this.defaultDeck = ['ember','ember','root','root','drop','drop','salt','salt','spice','vent'];
+        this.deck = [...this.defaultDeck];
+        this.drawPile = [];
+        this.hand = [];
+        this.day = 1;
+        this.gold = 0;
+        this.popularity = 50;
+        this.maxStabBase = 20;
+        this.pot = { r:0, g:0, b:0, s:this.maxStabBase, maxS:this.maxStabBase };
+        this.target = null;
+        this.bannedType = null;
+        this.customersPerDay = 3;
+        this.currentCustomerIndex = 1;
+        this.dailyCustomers = [];
+        
+        this.lastPlayedType = null;
+        this.nextCardFree = false;
+        this.options = { stackHand: false };
+
+        this.relics = []; // NEW: Tracks owned relics
+        this.freeRecycleUsed = false; // NEW: For Alchemist's Timepiece relic
+    }
+
+    init() {
+        this.showTutorial();
+        this.startDay();
+    }
+    
+    hardReset() {
+        this.deck = [...this.defaultDeck];
+        this.relics = [];
+        this.day = 1;
+        this.gold = 0;
+        this.popularity = 50;
+        this.hand = [];
+        this.pot.maxS = this.maxStabBase;
+        this.pot.s = this.maxStabBase;
+        this.pot.r=0; this.pot.g=0; this.pot.b=0;
+        
+        document.getElementById('game-over-overlay').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+        
+        this.renderRelics();
+        this.startDay();
+    }
+
+    showTutorial() { document.getElementById('tutorial-overlay').style.display = 'flex'; }
+    showOptions() { document.getElementById('options-overlay').style.display = 'flex'; }
+    
+    toggleStacking(val) { this.options.stackHand = val; this.renderHand(); }
+    hasRelic(id) { return this.relics.includes(id); } // NEW: Helper function
+
+    startDay() {
+        document.getElementById('overlay').style.display = 'none';
+        this.currentCustomerIndex = 1;
+        
+        if (this.popularity >= 90) this.customersPerDay = 5;
+        else if (this.popularity >= 60) this.customersPerDay = 4;
+        else if (this.popularity >= 30) this.customersPerDay = 3;
+        else this.customersPerDay = 2;
+
+        this.dailyCustomers = [];
+        for (let i = 0; i < this.customersPerDay; i++) {
+            this.dailyCustomers.push(this.generateCustomerLogic());
+        }
+
+        this.pot.maxS = this.maxStabBase + (this.hasRelic('reinforced_beaker') ? 5 : 0);
+        this.resetPot();
+        this.shuffleDeck();
+        this.hand = [];
+        this.drawCards(5);
+        this.freeRecycleUsed = false;
+        this.updateRecycleButtonText();
+        this.nextCustomer();
+    }
+
+    nextCustomer() {
+        if(this.dailyCustomers.length > 0) {
+            const customerData = this.dailyCustomers.shift();
+            this.target = customerData.target;
+            this.bannedType = customerData.bannedType;
+            
+            document.getElementById('c-name').innerText = `${customerData.name} (${this.currentCustomerIndex}/${this.customersPerDay})`;
+            let html = '';
+            if(this.target.r>0) html += `<div class="req-row"><span style="color:var(--fire)">Fire</span><span>${this.target.r}</span></div>`;
+            if(this.target.g>0) html += `<div class="req-row"><span style="color:var(--nature)">Nature</span><span>${this.target.g}</span></div>`;
+            if(this.target.b>0) html += `<div class="req-row"><span style="color:var(--frost)">Frost</span><span>${this.target.b}</span></div>`;
+            document.getElementById('c-reqs').innerHTML = html;
+            document.getElementById('c-ban').innerText = this.bannedType ? `*Allergic to ${this.bannedType.toUpperCase()} (Keep it 0)` : "";
+            
+            if (this.currentCustomerIndex > 1) {
+                 this.pot.s = Math.min(this.pot.maxS, this.pot.s + 10);
+                 this.pot.r = 0; this.pot.g = 0; this.pot.b = 0;
+                 this.lastPlayedType = null;
+                 this.nextCardFree = false;
+                 this.hand = [];
+                 this.drawCards(5);
+                 this.spawnFloat("+10 Stability", "var(--stab)");
+            }
+
+            // NEW: Scholar's Lens Relic Effect
+            if(this.hasRelic('scholars_lens')) {
+                let highestReq = 0; let highestType = '';
+                if(this.target.r > highestReq) { highestReq = this.target.r; highestType = 'r'; }
+                if(this.target.g > highestReq) { highestReq = this.target.g; highestType = 'g'; }
+                if(this.target.b > highestReq) { highestReq = this.target.b; highestType = 'b'; }
+                if(highestType) {
+                    const boost = Math.ceil(highestReq * 0.2);
+                    this.pot[highestType] += boost;
+                    this.spawnFloat(`+${boost} Auto-Brew`, '#fff');
+                }
+            }
+        }
+        this.updateUI();
+    }
+
+    shuffleDeck() {
+        this.drawPile = [...this.deck];
+        for (let i = this.drawPile.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [this.drawPile[i], this.drawPile[j]] = [this.drawPile[j], this.drawPile[i]];
+        }
+    }
+
+    drawCards(n) {
+        // MODIFIED: Tome of Plenty Relic Effect
+        const cardsToDraw = n + (this.hasRelic('tome_of_plenty') ? 1 : 0);
+        for(let i=0; i < cardsToDraw; i++) {
+            if(this.drawPile.length === 0) { this.shuffleDeck(); }
+            if(this.drawPile.length > 0) { this.hand.push(this.drawPile.pop()); }
+        }
+        this.renderHand();
+    }
+    
+    createHandCardElement(card) {
+        const el = document.createElement('div');
+        el.className = `card type-${card.type} ${card.rarity}`;
+        let costStyle = this.nextCardFree ? 'text-decoration:line-through; color:gold' : '';
+        el.innerHTML = `
+            <div class="card-header">${card.name}</div>
+            <div class="card-art">${card.icon}</div>
+            <div class="card-desc">${card.desc.replace('\n','<br>')}</div>
+            <div class="card-cost" style="${costStyle}">-${card.cost} Stab</div>
+        `;
+        return el;
+    }
+
+    createShopCardElement(card, isRelic = false) {
+        const el = document.createElement('div');
+        if (isRelic) {
+            el.className = `card epic shop-card`; // Relics are always epic rarity style
+            el.innerHTML = `
+                <div class="card-header">${card.name}</div>
+                <div class="card-art" style="font-size: 2.5em;">${card.icon}</div>
+                <div class="card-desc">${card.desc}</div>
+                <div class="card-cost" style="color:gold">${card.price}G</div>
+            `;
+        } else {
+            el.className = `card type-${card.type} ${card.rarity} shop-card`;
+            el.innerHTML = `
+                <div class="card-header">${card.name}</div>
+                <div class="card-art">${card.icon}</div>
+                <div class="card-desc">${card.desc.replace('\n','<br>')}</div>
+                <div class="card-cost" style="color:gold">${card.price}G</div>
+            `;
+        }
+        return el;
+    }
+
+
+    showDeck() {
+        const container = document.getElementById('deck-grid-content');
+        container.innerHTML = '';
+        const counts = {};
+        this.deck.forEach(id => { counts[id] = (counts[id] || 0) + 1; });
+        const uniqueIds = Object.keys(counts).sort();
+
+        uniqueIds.forEach(cid => {
+            const card = CARDS_DB.find(x => x.id === cid);
+            const el = this.createHandCardElement(card);
+            el.style.width = '120px'; el.style.height = '170px';
+            if (counts[cid] > 1) { el.innerHTML += `<div class="card-count">x${counts[cid]}</div>`; }
+            container.appendChild(el);
+        });
+        document.getElementById('deck-overlay').style.display = 'flex';
+    }
+
+    resetPot() {
+        this.pot.s = this.pot.maxS; 
+        this.pot.r=0; this.pot.g=0; this.pot.b=0;
+        this.lastPlayedType = null;
+        this.nextCardFree = false;
+        document.getElementById('pot-visual').className = '';
+    }
+
+    generateCustomerLogic() {
+        const difficulty = 10 + (this.day * 5);
+        let r = 0, g = 0, b = 0, ban = null, name = "Traveler";
+        
+        const types = [
+            { name: "Pyromancer", weight: 0.1, fn: () => { r = difficulty; ban = 'frost'; } },
+            { name: "Cryomancer", weight: 0.1, fn: () => { b = difficulty; ban = 'fire'; } },
+            { name: "Druid", weight: 0.1, fn: () => { g = difficulty; ban = null; } },
+            { name: "Blacksmith", weight: 0.1, fn: () => { r = Math.floor(difficulty*0.7); g = 0; b = Math.floor(difficulty*0.3); ban = 'nature'; } },
+            { name: "Swamp Witch", weight: 0.1, fn: () => { r = 0; g = Math.floor(difficulty*0.6); b = Math.floor(difficulty*0.4); ban = 'fire'; } },
+            { name: "Noble", weight: 0.13, fn: () => { r = Math.floor(difficulty*0.5); g = Math.floor(difficulty*0.5); b = 0; ban = null; } },
+            { name: "Alchemist", weight: 0.12, fn: () => { r = Math.floor(difficulty/3); g = Math.floor(difficulty/3); b = Math.floor(difficulty/3); ban = null; } },
+            { name: "Steam Engineer", weight: 0.15, fn: () => { r = Math.floor(difficulty*0.5); g = 0; b = Math.floor(difficulty*0.5); ban = 'nature'; } },
+            { name: "Phoenix Cultist", weight: 0.15, fn: () => { r = Math.floor(difficulty*0.6); g = Math.floor(difficulty*0.4); b = 0; ban = 'frost'; } }
+        ];
+
+        let roll = Math.random();
+        let selected = types[types.length-1];
+        let running = 0;
+        for(let t of types) {
+            running += t.weight;
+            if(roll < running) { selected = t; break; }
+        }
+
+        selected.fn();
+        return { name: selected.name, target: {r,g,b}, bannedType: ban };
+    }
+
+    createParticles(type) {
+        const container = document.getElementById('main-stage');
+        const pot = document.getElementById('pot-visual');
+        const rect = pot.getBoundingClientRect();
+        const colors = {
+            'fire': ['#ff4d4d', '#ffa502'],
+            'frost': ['#3498db', '#ecf0f1'],
+            'nature': ['#2ecc71', '#27ae60'],
+            'void': ['#9b59b6', '#8e44ad']
+        };
+        let cols = colors[type] || ['#fff'];
+        for(let i=0; i<12; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            const size = Math.random() * 8 + 4;
+            p.style.width = size + 'px'; p.style.height = size + 'px';
+            p.style.background = cols[Math.floor(Math.random()*cols.length)];
+            const mainRect = container.getBoundingClientRect();
+            p.style.left = (rect.left + rect.width/2 - mainRect.left) + 'px';
+            p.style.top = (rect.top + rect.height/2 - mainRect.top) + 'px';
+            const tx = (Math.random() - 0.5) * 100;
+            const ty = -Math.random() * 150 - 50;
+            p.style.setProperty('--tx', `${tx}px`); p.style.setProperty('--ty', `${ty}px`);
+            p.style.animation = `floatUpFade ${0.5 + Math.random()}s ease-out forwards`;
+            container.appendChild(p);
+            setTimeout(() => p.remove(), 2000);
+        }
+    }
+
+    triggerSplash() {
+        const liquid = document.getElementById('liquid');
+        const splash = document.createElement('div');
+        splash.className = 'splash-ring';
+        liquid.appendChild(splash);
+        setTimeout(() => splash.remove(), 600);
+    }
+
+    playCard(indexOrId) {
+        let index;
+        if (typeof indexOrId === 'string') {
+            index = this.hand.indexOf(indexOrId);
+            if(index === -1) return;
+        } else {
+            index = indexOrId;
+        }
+
+        const cardId = this.hand[index];
+        const card = CARDS_DB.find(c => c.id === cardId);
+
+        const pot = document.getElementById('pot-visual');
+        pot.classList.remove('pot-pulse');
+        void pot.offsetWidth; pot.classList.add('pot-pulse');
+        setTimeout(() => pot.classList.remove('pot-pulse'), 150);
+
+        this.createParticles(card.type);
+        this.triggerSplash();
+        
+        const wasFree = this.nextCardFree;
+        if(wasFree) this.nextCardFree = false; 
+
+        const sBefore = this.pot.s;
+        card.fn(this.pot, this);
+
+        if (wasFree) {
+             if(this.pot.s < sBefore) this.pot.s = sBefore; 
+             this.spawnFloat("Free!", "#fff");
+        }
+
+        this.lastPlayedType = card.type;
+        if(this.pot.r < 0) this.pot.r = 0; if(this.pot.g < 0) this.pot.g = 0; if(this.pot.b < 0) this.pot.b = 0;
+        if(this.pot.s > this.pot.maxS) this.pot.s = this.pot.maxS;
+
+        this.hand.splice(index, 1);
+        this.spawnFloat(card.icon, '#fff');
+
+        if(this.pot.s <= 0) {
+            this.pot.s = 0; this.updateUI(); this.explode();
+        } else {
+            this.renderHand(); this.updateUI();
+        }
+    }
+
+    updateRecycleButtonText() {
+        const btn = document.getElementById('btn-cycle-hand');
+        const drawCount = 5 + (this.hasRelic('tome_of_plenty') ? 1 : 0);
+        if (this.hasRelic('alchemists_timepiece') && !this.freeRecycleUsed) {
+            btn.innerHTML = `Draw ${drawCount}<br>(FREE)`;
+        } else {
+            btn.innerHTML = `Draw ${drawCount}<br>(-3 Stab)`;
+        }
+    }
+
+    recycleHand() {
+        // MODIFIED: Alchemist's Timepiece relic effect
+        const isFree = this.hasRelic('alchemists_timepiece') && !this.freeRecycleUsed;
+        if (!isFree && this.pot.s <= 3) { alert("Not enough stability!"); return; }
+
+        if (isFree) {
+            this.freeRecycleUsed = true;
+            this.spawnFloat("Free Redraw!", "var(--stab)");
+        } else {
+            this.pot.s -= 3;
+            this.spawnFloat("-3 Stab", "var(--stab)");
+        }
+        
+        this.hand = [];
+        this.drawCards(5);
+        this.updateRecycleButtonText();
+        this.updateUI();
+    }
+
+    spawnFloat(txt, col) {
+        const el = document.createElement('div');
+        el.className = 'float-text';
+        el.innerText = txt;
+        el.style.color = col;
+        el.style.left = '50%';
+        el.style.top = '50%';
+        document.getElementById('cauldron-area').appendChild(el);
+        setTimeout(() => el.remove(), 1000);
+    }
+
+    explode() {
+        document.getElementById('pot-visual').classList.add('shaking');
+        document.documentElement.style.setProperty('--glow-r', '255');
+        document.documentElement.style.setProperty('--glow-g', '0');
+        document.documentElement.style.setProperty('--glow-b', '0');
+        
+        setTimeout(() => {
+            document.getElementById('pot-visual').classList.remove('shaking');
+            document.getElementById('go-title').innerText = "LAB DESTROYED";
+            document.getElementById('go-msg').innerText = "Your volatile mixture exploded.";
+            document.getElementById('game-over-overlay').style.display = 'flex';
+        }, 1000);
+    }
+    
+    shutdown() {
+        document.getElementById('go-title').innerText = "OUT OF BUSINESS";
+        document.getElementById('go-msg').innerText = "Your reputation is ruined. No one trusts your brews.";
+        document.getElementById('game-over-overlay').style.display = 'flex';
+    }
+
+    servePotion() {
+        const t = this.target;
+        const p = this.pot;
+
+        if (p.r + p.g + p.b === 0) { this.showResult("Rejected", "You served them water. They leave in disgust.", 0, -20); return; }
+        if(this.bannedType === 'fire' && p.r > 0) { this.showResult("Allergic Reaction!", "They had a fiery reaction.", 0, -20); return; }
+        if(this.bannedType === 'nature' && p.g > 0) { this.showResult("Allergic Reaction!", "They broke out in hives.", 0, -20); return; }
+        if(this.bannedType === 'frost' && p.b > 0) { this.showResult("Allergic Reaction!", "They froze solid.", 0, -20); return; }
+
+        let diff = Math.abs(t.r - p.r) + Math.abs(t.g - p.g) + Math.abs(t.b - p.b);
+        let reward = 0, title = "", msg = "", popChange = 0;
+        
+        if(diff <= 1) { title = "Masterpiece!"; msg = "The customer is ecstatic!"; reward = 25 + (this.day * 6); popChange = 5; } 
+        else if (diff <= 5) { title = "Great Brew"; msg = "The customer is satisfied."; reward = 15 + (this.day * 4); popChange = 2; } 
+        else if (diff <= 15) { title = "Acceptable"; msg = "It barely passes inspection."; reward = 8 + (this.day * 2); popChange = -2; } 
+        else { title = "Swill"; msg = "The customer refuses to pay full price."; reward = 2; popChange = -10; }
+
+        this.showResult(title, msg, reward, popChange);
+    }
+
+    showResult(title, msg, reward, popChange) {
+        document.getElementById('res-title').innerText = title;
+        document.getElementById('res-title').style.color = reward > 10 ? (reward > 20 ? 'var(--rare)' : 'white') : 'var(--danger)';
+        document.getElementById('res-msg').innerText = msg;
+        document.getElementById('res-gold').innerText = reward;
+        
+        const popEl = document.getElementById('res-pop-change');
+        if(popChange > 0) {
+            popEl.innerText = `+${popChange} Popularity`;
+            popEl.style.color = "var(--pop)";
+        } else {
+            popEl.innerText = `${popChange} Popularity`;
+            popEl.style.color = "var(--danger)";
+        }
+        
+        document.getElementById('result-overlay').style.display = 'flex';
+        this.pendingResult = { title, reward, popChange };
+    }
+
+    finishCustomer() {
+        let { title, reward, popChange } = this.pendingResult;
+        
+        // NEW: Golden Ladle relic effect
+        if(this.hasRelic('golden_ladle') && (title === "Great Brew" || title === "Masterpiece!")) {
+            reward += 5;
+            this.spawnFloat("+5g Bonus!", "gold");
+        }
+
+        this.gold += reward;
+        this.popularity += popChange;
+        if(this.popularity > 100) this.popularity = 100;
+        
+        if(this.popularity <= 0) { this.shutdown(); return; }
+        
+        if(this.dailyCustomers.length === 0) {
+            this.openShop();
+        } else {
+            this.currentCustomerIndex++;
+            this.nextCustomer();
+        }
+    }
+    
+    getRandomCards(pool, count) {
+        const shuffled = [...pool].sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, count);
+    }
+
+    openShop() {
+        const shopContainer = document.getElementById('shop-main-container');
+        shopContainer.innerHTML = '';
+        document.getElementById('ov-title').innerText = "Day Complete";
+        document.getElementById('ov-desc').innerText = `Current Gold: ${this.gold}`;
+
+        // Regular cards
+        const basicChoices = this.getRandomCards(CARDS_DB.filter(c => c.shop_category === 'basic'), 4);
+        this.renderShopSection(shopContainer, 'Basic Ingredients', 'Choose 2', basicChoices, 2);
+
+        const voidChoices = this.getRandomCards(CARDS_DB.filter(c => c.shop_category === 'void'), 3);
+        this.renderShopSection(shopContainer, 'Void Arts', 'Choose 1', voidChoices, 1);
+        
+        const stabilizerChoices = this.getRandomCards(CARDS_DB.filter(c => c.shop_category === 'stabilizer'), 2);
+        this.renderShopSection(shopContainer, 'Stabilizers', 'Choose 1', stabilizerChoices, 1);
+
+        // NEW: Relic shop section
+        const unownedRelics = RELICS_DB.filter(r => !this.hasRelic(r.id));
+        if (unownedRelics.length > 0) {
+            const relicOffer = this.getRandomCards(unownedRelics, 1);
+            this.renderShopSection(shopContainer, 'Rare Curiosities', 'Choose 1', relicOffer, 1, true);
+        }
+        
+        document.getElementById('overlay').style.display = 'flex';
+        this.updateUI();
+    }
+    
+    renderShopSection(container, title, instruction, itemPool, maxChoices, areRelics = false) {
+        let choicesMade = 0;
+        const section = document.createElement('div');
+        section.className = 'shop-section';
+        section.innerHTML = `
+            <div class="shop-section-header">
+                <h2>${title}</h2>
+                <span>${instruction}</span>
+            </div>
+            <div class="shop-card-grid"></div>
+        `;
+        const grid = section.querySelector('.shop-card-grid');
+
+        itemPool.forEach(item => {
+            if (!areRelics) {
+                item.price = (item.rarity === 'epic' ? 50 : (item.rarity === 'rare' ? 35 : 15)) + Math.floor(Math.random()*10);
+            }
+            // NEW: Merchant's Coin relic effect
+            if(this.hasRelic('merchants_coin')) {
+                item.price = Math.floor(item.price * 0.8);
+            }
+
+            const el = this.createShopCardElement(item, areRelics);
+            el.onclick = () => {
+                if (el.classList.contains('chosen') || section.classList.contains('locked') || this.gold < item.price) return;
+                
+                this.gold -= item.price;
+                if(areRelics) {
+                    this.gainRelic(item.id);
+                } else {
+                    this.deck.push(item.id);
+                }
+                
+                el.classList.add('chosen');
+                choicesMade++;
+                
+                if (choicesMade >= maxChoices) {
+                    section.classList.add('locked');
+                }
+                
+                document.getElementById('ov-desc').innerText = `Current Gold: ${this.gold}`;
+                this.updateUI();
+            };
+            grid.appendChild(el);
+        });
+        container.appendChild(section);
+    }
+    
+    gainRelic(relicId) {
+        if (this.hasRelic(relicId)) return;
+        this.relics.push(relicId);
+        this.renderRelics();
+        this.updateRecycleButtonText();
+        this.updateUI();
+    }
+
+    renderRelics() {
+        const container = document.getElementById('relic-container');
+        container.innerHTML = '';
+        this.relics.forEach(relicId => {
+            const relicData = RELICS_DB.find(r => r.id === relicId);
+            if (relicData) {
+                const el = document.createElement('div');
+                el.className = 'relic-item';
+                el.title = `${relicData.name}\n\n${relicData.desc}`;
+                el.innerText = relicData.icon;
+                container.appendChild(el);
+            }
+        });
+    }
+
+    rerollShop() {
+        if(this.gold >= 20) {
+            this.gold -= 20;
+            this.openShop();
+        } else {
+            alert("Not enough gold!");
+        }
+    }
+
+    nextDay() { this.day++; this.startDay(); }
+
+    updateUI() {
+        document.getElementById('ui-day').innerText = this.day;
+        document.getElementById('ui-pop').innerText = this.popularity;
+        document.getElementById('ui-cust').innerText = `${this.currentCustomerIndex}/${this.customersPerDay}`;
+        document.getElementById('ui-gold').innerText = this.gold;
+        document.getElementById('ui-deck-count').innerText = this.deck.length;
+
+        const max = Math.max(30, this.pot.r, this.pot.g, this.pot.b, this.target ? Math.max(this.target.r, this.target.g, this.target.b) : 0);
+        document.getElementById('bar-r').style.width = (this.pot.r / max * 100) + '%';
+        document.getElementById('bar-g').style.width = (this.pot.g / max * 100) + '%';
+        document.getElementById('bar-b').style.width = (this.pot.b / max * 100) + '%';
+        
+        document.getElementById('val-r').innerText = Math.round(this.pot.r);
+        document.getElementById('val-g').innerText = Math.round(this.pot.g);
+        document.getElementById('val-b').innerText = Math.round(this.pot.b);
+
+        document.getElementById('bar-stab').style.width = (this.pot.s / this.pot.maxS * 100) + '%';
+        document.getElementById('stab-text').innerText = `${this.pot.s}/${this.pot.maxS}`;
+        
+        const sb = document.getElementById('bar-stab');
+        if(this.pot.s < 5) sb.style.background = 'red';
+        else if(this.pot.s < this.pot.maxS * 0.25) sb.style.background = 'orange';
+        else sb.style.background = 'var(--stab)';
+
+        const lightScale = 12; 
+        const r = Math.min(255, Math.floor(this.pot.r * lightScale));
+        const g = Math.min(255, Math.floor(this.pot.g * lightScale));
+        const b = Math.min(255, Math.floor(this.pot.b * lightScale));
+        const tot = this.pot.r + this.pot.g + this.pot.b;
+        const heightPct = Math.min(100, 5 + (tot * 1.5)); 
+
+        const root = document.documentElement.style;
+        root.setProperty('--glow-r', r); root.setProperty('--glow-g', g); root.setProperty('--glow-b', b);
+        root.setProperty('--liquid-height', heightPct + '%');
+        
+        document.getElementById('cauldron-area').style.textShadow = (tot > 5) ? `0 0 10px rgba(${r},${g},${b}, 0.5)` : 'none';
+    }
+
+    renderHand() {
+        const c = document.getElementById('hand-container');
+        c.innerHTML = '';
+
+        if (this.options.stackHand) {
+            const counts = {};
+            this.hand.forEach(id => { counts[id] = (counts[id] || 0) + 1; });
+            const uniqueIds = Object.keys(counts).sort();
+
+            uniqueIds.forEach(cid => {
+                const card = CARDS_DB.find(x => x.id === cid);
+                const el = this.createHandCardElement(card);
+                if (counts[cid] > 1) { el.innerHTML += `<div class="card-count">x${counts[cid]}</div>`; }
+                el.onclick = () => this.playCard(cid); 
+                c.appendChild(el);
+            });
+        } else {
+            this.hand.forEach((cid, i) => {
+                const card = CARDS_DB.find(x => x.id === cid);
+                const el = this.createHandCardElement(card);
+                if(this.nextCardFree) el.style.border = "2px solid gold";
+                el.onclick = () => this.playCard(i); 
+                c.appendChild(el);
+            });
+        }
+    }
+}
+
+const game = new Game();
+game.init();
+</script>
+</body>
+</html>

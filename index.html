@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>The Volatile Alchemist</title>
+    <title>The Volatile Alchemist: Boss Update</title>
     <style>
         :root {
             --bg: #050505;
@@ -94,7 +94,16 @@
             z-index: 10;
             border-radius: 2px;
             flex-shrink: 0;
+            transition: 0.3s;
         }
+        .ticket.boss-mode {
+            background: #2c0b0b;
+            color: #ffcccc;
+            border: 2px solid #e74c3c;
+            transform: rotate(2deg) scale(1.1);
+        }
+        .ticket.boss-mode h3 { border-bottom-color: #e74c3c; color: #e74c3c; }
+
         .ticket::after {
             content: '';
             position: absolute; top: -10px; left: 50%;
@@ -208,10 +217,13 @@
         .btn-brew:hover { background: #27ae60; transform: translateY(2px); box-shadow: 0 0 15px var(--nature); }
         .btn-brew:active { transform: translateY(4px); box-shadow: none; }
         
+        .btn-attack { background: var(--danger); color: #fff; box-shadow: 0 4px 0 #c0392b; }
+        .btn-attack:hover { background: #ff5252; box-shadow: 0 0 15px var(--danger); }
+
         .btn-cycle { background: transparent; border: 1px solid var(--stab); color: var(--stab); }
         .btn-cycle:hover { background: rgba(241, 196, 15, 0.1); box-shadow: 0 0 10px var(--stab); }
 
-        /* --- NEW: RELIC AREA --- */
+        /* --- RELIC AREA --- */
         #relic-container {
             height: 60px;
             display: flex;
@@ -318,6 +330,44 @@
             .stat-line { margin: 2px 0; }
         }
 
+        /* BOSS UI */
+        #boss-area {
+            width: 800px; max-width: 90%; 
+            background: linear-gradient(to top, rgba(10,10,10,0.95), rgba(40,10,10,0.9));
+            border: 2px solid #800000; padding: 15px; border-radius: 8px;
+            /* Position changed to sit below the hand container (height 240px) */
+            position: fixed; bottom: 0px; left: 50%; transform: translateX(-50%);
+            display: none; z-index: 250; 
+            box-shadow: 0 -5px 40px rgba(0,0,0,0.8);
+            animation: slideUp 0.5s ease-out;
+        }
+        @keyframes slideUp { from { bottom: 150px; opacity: 0; } to { bottom: 0px; opacity: 1; } }
+        
+        #boss-area .boss-name { 
+            font-weight: bold; color: var(--danger); margin-bottom: 5px; 
+            text-align: center; font-size: 0.8em; letter-spacing: 2px; text-transform: uppercase;
+            text-shadow: 0 0 10px red; display: flex; justify-content: space-between;
+        }
+        .boss-bar-bg { height: 18px; background: #222; border-radius: 10px; overflow: hidden; border: 1px solid #550000; position: relative; margin-bottom: 8px; }
+        .boss-fill { 
+            height: 100%; width: 100%; 
+            background: linear-gradient(90deg, #c0392b, #e74c3c); 
+            transition: width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
+            box-shadow: 0 0 15px rgba(231, 76, 60, 0.5); 
+        }
+        .player-bar-bg { height: 14px; background: #111; border-radius: 10px; overflow: hidden; border: 1px solid #444; position: relative; }
+        .player-fill {
+            height: 100%; width: 100%;
+            background: linear-gradient(90deg, #8e44ad, #e91e63);
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px var(--pop);
+        }
+        #boss-hp-text, #player-hp-text { 
+            position: absolute; top:0; left:0; width:100%; height:100%; 
+            display:flex; justify-content:center; align-items:center; 
+            font-size:0.75em; font-weight:bold; color: white; text-shadow: 1px 1px 2px black; z-index: 2;
+        }
+        
         /* OVERLAYS */
         #overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.9);
@@ -450,15 +500,23 @@
         <div id="stab-text" style="font-size:0.8em; margin-bottom:10px;">20/20</div>
         <div class="btn-group">
             <button id="btn-cycle-hand" class="btn-cycle" onclick="game.recycleHand()" title="Draw new cards"></button>
-            <button class="btn-brew" onclick="game.servePotion()">SERVE POTION</button>
+            <button id="btn-main-action" class="btn-brew" onclick="game.servePotion()">SERVE POTION</button>
         </div>
     </div>
 </div>
 
-<!-- NEW: Relic Container -->
-<div id="relic-container"></div>
+<div id="boss-area">
+    <div class="boss-name" id="boss-name">Corrupted Entity</div>
+    <div class="boss-bar-bg">
+        <div id="boss-bar" class="boss-fill" style="width:100%"></div>
+        <div id="boss-hp-text">100/100</div>
+    </div>
+</div>
 
 <div id="hand-container"></div>
+
+<!-- Relic Container -->
+<div id="relic-container"></div>
 
 <!-- Custom Result Overlay -->
 <div id="result-overlay">
@@ -468,7 +526,7 @@
         <div style="font-size:1.5em; color:gold; margin-bottom:10px;">+<span id="res-gold">50</span> Gold</div>
         <div style="font-size:1.2em; color:var(--pop);" id="res-pop-change">+5 Popularity</div>
         <br>
-        <button class="btn-brew" onclick="document.getElementById('result-overlay').style.display='none'; game.finishCustomer()">Continue</button>
+        <button class="btn-brew" onclick="document.getElementById('result-overlay').style.display='none'; game.resolveResult()">Continue</button>
     </div>
 </div>
 
@@ -486,7 +544,8 @@
     <div class="tut-box">
         <h2 style="color:var(--stab); margin-top:0">The Alchemist's Guide</h2>
         <div class="tut-row"><div class="tut-icon">📜</div><div><strong>The Order:</strong> Fulfill the Customer's needs. Watch out for allergies.</div></div>
-        <div class="tut-row"><div class="tut-icon">💗</div><div><strong>Popularity:</strong> Bad brews lower popularity. If it hits 0%, you are shut down. High popularity attracts more customers.</div></div>
+        <div class="tut-row"><div class="tut-icon">👹</div><div><strong>Bosses:</strong> At the end of every day, a <span style="color:var(--danger)">Corrupted</span> customer appears.</div></div>
+        <div class="tut-row"><div class="tut-icon">⚔️</div><div><strong>Combat:</strong> In Boss Mode, your potion's total stats = Damage. Defeat them before your reputation is ruined!</div></div>
         <div class="tut-row"><div class="tut-icon">🃏</div><div><strong>Stability:</strong> Keep an eye on Stability. If it hits 0, the lab explodes.</div></div>
         <button class="shop-btn" style="width:100%; margin-top:10px" onclick="document.getElementById('tutorial-overlay').style.display='none'">Start Brewing</button>
     </div>
@@ -635,8 +694,12 @@ class Game {
         this.nextCardFree = false;
         this.options = { stackHand: false };
 
-        this.relics = []; // NEW: Tracks owned relics
-        this.freeRecycleUsed = false; // NEW: For Alchemist's Timepiece relic
+        this.relics = []; 
+        this.freeRecycleUsed = false;
+        
+        // BOSS VARIABLES
+        this.bossActive = false;
+        this.boss = { name: '', hp: 0, maxHp: 0, dmg: 5 };
     }
 
     init() {
@@ -654,6 +717,7 @@ class Game {
         this.pot.maxS = this.maxStabBase;
         this.pot.s = this.maxStabBase;
         this.pot.r=0; this.pot.g=0; this.pot.b=0;
+        this.bossActive = false;
         
         document.getElementById('game-over-overlay').style.display = 'none';
         document.getElementById('overlay').style.display = 'none';
@@ -666,11 +730,18 @@ class Game {
     showOptions() { document.getElementById('options-overlay').style.display = 'flex'; }
     
     toggleStacking(val) { this.options.stackHand = val; this.renderHand(); }
-    hasRelic(id) { return this.relics.includes(id); } // NEW: Helper function
+    hasRelic(id) { return this.relics.includes(id); }
 
     startDay() {
         document.getElementById('overlay').style.display = 'none';
         this.currentCustomerIndex = 1;
+        this.bossActive = false;
+        
+        // Hide boss UI in case it was open
+        document.getElementById('boss-area').style.display = 'none';
+        document.getElementById('c-name').parentElement.classList.remove('boss-mode');
+        document.getElementById('btn-main-action').className = 'btn-brew';
+        document.getElementById('btn-main-action').innerText = "SERVE POTION";
         
         if (this.popularity >= 90) this.customersPerDay = 5;
         else if (this.popularity >= 60) this.customersPerDay = 4;
@@ -706,6 +777,7 @@ class Game {
             document.getElementById('c-reqs').innerHTML = html;
             document.getElementById('c-ban').innerText = this.bannedType ? `*Allergic to ${this.bannedType.toUpperCase()} (Keep it 0)` : "";
             
+            // Refill Stab between customers
             if (this.currentCustomerIndex > 1) {
                  this.pot.s = Math.min(this.pot.maxS, this.pot.s + 10);
                  this.pot.r = 0; this.pot.g = 0; this.pot.b = 0;
@@ -716,7 +788,7 @@ class Game {
                  this.spawnFloat("+10 Stability", "var(--stab)");
             }
 
-            // NEW: Scholar's Lens Relic Effect
+            // Scholar's Lens Relic
             if(this.hasRelic('scholars_lens')) {
                 let highestReq = 0; let highestType = '';
                 if(this.target.r > highestReq) { highestReq = this.target.r; highestType = 'r'; }
@@ -741,7 +813,6 @@ class Game {
     }
 
     drawCards(n) {
-        // MODIFIED: Tome of Plenty Relic Effect
         const cardsToDraw = n + (this.hasRelic('tome_of_plenty') ? 1 : 0);
         for(let i=0; i < cardsToDraw; i++) {
             if(this.drawPile.length === 0) { this.shuffleDeck(); }
@@ -766,7 +837,7 @@ class Game {
     createShopCardElement(card, isRelic = false) {
         const el = document.createElement('div');
         if (isRelic) {
-            el.className = `card epic shop-card`; // Relics are always epic rarity style
+            el.className = `card epic shop-card`; 
             el.innerHTML = `
                 <div class="card-header">${card.name}</div>
                 <div class="card-art" style="font-size: 2.5em;">${card.icon}</div>
@@ -784,7 +855,6 @@ class Game {
         }
         return el;
     }
-
 
     showDeck() {
         const container = document.getElementById('deck-grid-content');
@@ -836,7 +906,47 @@ class Game {
         }
 
         selected.fn();
-        return { name: selected.name, target: {r,g,b}, bannedType: ban };
+        return { name: selected.name || name, target: {r,g,b}, bannedType: ban };
+    }
+
+    /* --- BOSS LOGIC --- */
+    startBossEncounter() {
+        this.bossActive = true;
+        const bossHpScale = 40 + (this.day * 10); // HP Scales per day
+        this.boss = {
+            name: "Corrupted Customer",
+            hp: bossHpScale,
+            maxHp: bossHpScale,
+            dmg: 4 + Math.floor(this.day * 1.2)
+        };
+        
+        // UI Updates for Boss
+        document.getElementById('boss-area').style.display = 'block';
+        document.getElementById('boss-name').innerText = `⚠ ${this.boss.name} ⚠`;
+        document.getElementById('c-name').innerText = "FINAL CHALLENGE";
+        document.getElementById('c-name').parentElement.classList.add('boss-mode');
+        document.getElementById('c-reqs').innerHTML = `<div style="text-align:center; color:#e74c3c; font-weight:bold;">DEFEAT THE ENTITY</div><div style="text-align:center; font-size:0.8em; color:#aaa; margin-top:5px;">Potion Strength = Damage</div>`;
+        document.getElementById('c-ban').innerText = "";
+        
+        // Change button to Attack
+        const btn = document.getElementById('btn-main-action');
+        btn.className = 'btn-attack';
+        btn.innerText = "ATTACK BOSS";
+
+        // Full heal stability for the fight
+        this.pot.s = this.pot.maxS;
+        this.resetPot();
+        this.hand = [];
+        this.drawCards(5);
+        this.updateBossBar();
+        this.updateUI();
+        this.spawnFloat("BOSS FIGHT!", "var(--danger)");
+    }
+
+    updateBossBar() {
+        const pct = Math.max(0, (this.boss.hp / this.boss.maxHp) * 100);
+        document.getElementById('boss-bar').style.width = pct + '%';
+        document.getElementById('boss-hp-text').innerText = `${this.boss.hp}/${this.boss.maxHp}`;
     }
 
     createParticles(type) {
@@ -932,7 +1042,6 @@ class Game {
     }
 
     recycleHand() {
-        // MODIFIED: Alchemist's Timepiece relic effect
         const isFree = this.hasRelic('alchemists_timepiece') && !this.freeRecycleUsed;
         if (!isFree && this.pot.s <= 3) { alert("Not enough stability!"); return; }
 
@@ -982,6 +1091,46 @@ class Game {
     }
 
     servePotion() {
+        // BOSS LOGIC BRANCH
+        if (this.bossActive) {
+            const damage = this.pot.r + this.pot.g + this.pot.b;
+            if (damage === 0) {
+                this.spawnFloat("Empty!", "white");
+                return;
+            }
+
+            // Deal Damage
+            this.boss.hp -= damage;
+            if (this.boss.hp < 0) this.boss.hp = 0;
+            this.updateBossBar();
+
+            // Shake the boss UI
+            const bossUI = document.getElementById('boss-area');
+            bossUI.classList.add('shaking');
+            setTimeout(()=>bossUI.classList.remove('shaking'), 200);
+
+            if (this.boss.hp <= 0) {
+                // Boss Defeated
+                this.showResult("BOSS DEFEATED!", "The corruption has been purged.", 50 + (this.day * 10), 10);
+            } else {
+                // Boss Attacks Back
+                this.popularity -= this.boss.dmg;
+                this.spawnFloat(`-${this.boss.dmg} POP`, "var(--danger)");
+                this.spawnFloat(`Hit: ${damage}`, "white");
+                
+                // Reset Pot for next attack cycle
+                this.pot.r = 0; this.pot.g = 0; this.pot.b = 0;
+                
+                if (this.popularity <= 0) {
+                    this.shutdown();
+                } else {
+                    this.updateUI();
+                }
+            }
+            return;
+        }
+
+        // STANDARD CUSTOMER LOGIC
         const t = this.target;
         const p = this.pot;
 
@@ -1020,10 +1169,10 @@ class Game {
         this.pendingResult = { title, reward, popChange };
     }
 
-    finishCustomer() {
+    resolveResult() {
         let { title, reward, popChange } = this.pendingResult;
         
-        // NEW: Golden Ladle relic effect
+        // Golden Ladle relic
         if(this.hasRelic('golden_ladle') && (title === "Great Brew" || title === "Masterpiece!")) {
             reward += 5;
             this.spawnFloat("+5g Bonus!", "gold");
@@ -1035,9 +1184,15 @@ class Game {
         
         if(this.popularity <= 0) { this.shutdown(); return; }
         
-        if(this.dailyCustomers.length === 0) {
+        if (this.bossActive) {
+            // Boss just died
+            this.bossActive = false;
             this.openShop();
+        } else if(this.dailyCustomers.length === 0) {
+            // All regular customers done, trigger Boss
+            this.startBossEncounter();
         } else {
+            // Next regular customer
             this.currentCustomerIndex++;
             this.nextCustomer();
         }
@@ -1064,7 +1219,7 @@ class Game {
         const stabilizerChoices = this.getRandomCards(CARDS_DB.filter(c => c.shop_category === 'stabilizer'), 2);
         this.renderShopSection(shopContainer, 'Stabilizers', 'Choose 1', stabilizerChoices, 1);
 
-        // NEW: Relic shop section
+        // Relic shop section
         const unownedRelics = RELICS_DB.filter(r => !this.hasRelic(r.id));
         if (unownedRelics.length > 0) {
             const relicOffer = this.getRandomCards(unownedRelics, 1);
@@ -1092,7 +1247,6 @@ class Game {
             if (!areRelics) {
                 item.price = (item.rarity === 'epic' ? 50 : (item.rarity === 'rare' ? 35 : 15)) + Math.floor(Math.random()*10);
             }
-            // NEW: Merchant's Coin relic effect
             if(this.hasRelic('merchants_coin')) {
                 item.price = Math.floor(item.price * 0.8);
             }
@@ -1160,7 +1314,7 @@ class Game {
     updateUI() {
         document.getElementById('ui-day').innerText = this.day;
         document.getElementById('ui-pop').innerText = this.popularity;
-        document.getElementById('ui-cust').innerText = `${this.currentCustomerIndex}/${this.customersPerDay}`;
+        document.getElementById('ui-cust').innerText = this.bossActive ? "BOSS" : `${this.currentCustomerIndex}/${this.customersPerDay}`;
         document.getElementById('ui-gold').innerText = this.gold;
         document.getElementById('ui-deck-count').innerText = this.deck.length;
 

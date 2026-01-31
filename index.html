@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>The Volatile Alchemist: Boss Update</title>
-    <style>
+    <title>The Volatile Alchemist: Solid Conveyor</title>
+<style>
         :root {
             --bg: #050505;
             --panel: #1e1e24;
@@ -220,9 +220,6 @@
         .btn-attack { background: var(--danger); color: #fff; box-shadow: 0 4px 0 #c0392b; }
         .btn-attack:hover { background: #ff5252; box-shadow: 0 0 15px var(--danger); }
 
-        .btn-cycle { background: transparent; border: 1px solid var(--stab); color: var(--stab); }
-        .btn-cycle:hover { background: rgba(241, 196, 15, 0.1); box-shadow: 0 0 10px var(--stab); }
-
         /* --- RELIC AREA --- */
         #relic-container {
             height: 60px;
@@ -252,24 +249,90 @@
             transform: scale(1.1);
         }
 
-        /* HAND AREA */
-        #hand-container {
+        /* --- CONVEYOR BELT AREA (Replaces old hand) --- */
+        #conveyor-wrapper {
             height: 240px; 
-            background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0));
+            width: 100%;
+            background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(10,10,10,0.5));
             display: flex;
-            justify-content: center;
             align-items: center;
-            gap: 15px;
+            justify-content: center; 
+            gap: 10px;
             padding: 0 20px;
             perspective: 1000px;
             flex-shrink: 0;
             z-index: 100;
             position: relative;
             box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+            border-top: 1px solid #333;
         }
         
+        /* The Lever / Churn UI */
+        #churn-control {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-right: 20px;
+            z-index: 110;
+        }
+        #churn-btn {
+            width: 60px; height: 60px;
+            border-radius: 50%;
+            background: #222;
+            border: 3px solid #555;
+            color: var(--danger);
+            font-size: 1.5em;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            transition: 0.2s;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        #churn-btn:hover {
+            border-color: var(--stab);
+            color: var(--stab);
+            box-shadow: 0 0 20px var(--stab);
+            transform: rotate(-10deg);
+        }
+        #churn-btn:active { transform: scale(0.9); }
+        .churn-cost { font-size: 0.3em; margin-top: 2px; color: #aaa; font-weight: bold; }
+
+        /* The Belt Track */
+        #belt-track {
+            display: flex;
+            gap: 15px; /* CARD GAP DEFINED HERE */
+            padding: 10px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            border: 1px dashed #444;
+            min-width: 800px; /* Force minimum width for 5 cards */
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        #belt-track::before {
+            content: '⟵ FLOW ⟵';
+            position: absolute; bottom: -20px; width: 100%; text-align: center;
+            color: #444; font-size: 0.8em; letter-spacing: 5px; font-weight: bold;
+        }
+
+        /* The Deck/Draw Pile Visual */
+        #deck-stack {
+            width: 80px; height: 120px;
+            background: #111;
+            border: 2px solid #444;
+            border-radius: 6px;
+            margin-left: 20px;
+            display: flex; align-items: center; justify-content: center;
+            flex-direction: column;
+            color: #555;
+            position: relative;
+            box-shadow: inset 0 0 10px #000;
+        }
+        #deck-stack::after { content:''; position: absolute; top:-4px; left:2px; width:100%; height:100%; border: 2px solid #333; background: #1a1a1a; z-index:-1; border-radius: 6px; }
+        
         .card {
-            width: 140px; height: 200px;
+            width: 140px; /* CARD WIDTH DEFINED HERE */
+            height: 200px;
             background: #1a1a24;
             border: 2px solid #444;
             border-radius: 8px;
@@ -279,12 +342,59 @@
             box-sizing: border-box;
             position: relative;
             cursor: pointer;
-            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s;
+            
+            /* Vital for sliding animation */
+            transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.18s ease-out; 
+
             box-shadow: 0 5px 15px rgba(0,0,0,0.5);
             flex-shrink: 0;
+            z-index: 10;
         }
+
+        /* Entry animation styles */
+        .card.entry-glow {
+            box-shadow: 0 8px 40px rgba(255,255,255,0.06), 0 0 30px rgba(255,255,255,0.03);
+            transition: box-shadow 0.45s ease;
+        }
+
+        @keyframes cardPop {
+            0% { transform: scale(1.08); }
+            100% { transform: scale(1); }
+        }
+
+        .card.entry-pop {
+            animation: cardPop 160ms ease-out forwards;
+        }
+
+        /* Wire connection & particle trail */
+        .wire-svg {
+            position: absolute; pointer-events: none; left:0; top:0; width:100%; height:100%; z-index:2500;
+        }
+        .wire-line {
+            stroke-linecap: round;
+            stroke-width: 3;
+            opacity: 0.95;
+            filter: drop-shadow(0 0 8px rgba(255,255,255,0.06));
+            transition: stroke-width 150ms ease;
+        }
+        .wire-flash {
+            animation: wireFlash 220ms ease-out forwards;
+        }
+        @keyframes wireFlash { 0% { stroke-width:8; opacity:1 } 100% { stroke-width:3; opacity:0.9 } }
+
+        .draw-particle {
+            position: absolute; width:10px; height:10px; border-radius:50%;
+            pointer-events:none; z-index:2600;
+            box-shadow: 0 0 12px currentColor;
+            transform: translate(-50%, -50%);
+            opacity: 1;
+        }
+        @keyframes particleFade {
+            to { transform: scale(0.2) translate(-50%, -50%); opacity: 0; }
+        }
+
         .card:hover { 
-            transform: translateY(-50px) scale(1.1); 
+            transform: translateY(-10px) scale(1.05); 
             z-index: 1000; 
             border-color: #fff;
             box-shadow: 0 0 20px rgba(255,255,255,0.2); 
@@ -297,16 +407,7 @@
             font-size: 0.7em; text-align: center; margin-top: 5px; padding-top: 5px; border-top: 1px solid #333; 
             color: var(--stab); font-weight: bold;
         }
-        .card-count {
-            position: absolute; top: -10px; right: -10px;
-            background: var(--danger); color: white;
-            width: 25px; height: 25px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: bold; font-size: 0.8em;
-            box-shadow: 0 2px 5px #000; z-index: 101;
-            border: 2px solid #fff;
-        }
-
+        
         .rare .card-header { color: var(--rare); text-shadow: 0 0 8px var(--rare); }
         .epic .card-header { color: var(--epic); text-shadow: 0 0 8px var(--epic); }
         .rare { border-color: var(--rare); box-shadow: 0 5px 15px rgba(0,210,211,0.2); }
@@ -320,7 +421,7 @@
         @media (max-height: 750px) {
             #pot-visual { width: 160px; height: 160px; }
             .ticket { width: 200px; padding: 15px; font-size: 0.9em; }
-            #hand-container { height: 190px; }
+            #conveyor-wrapper { height: 190px; }
             #relic-container { height: 50px; }
             .relic-item { width: 35px; height: 35px; font-size: 1.2em; }
             .card { width: 110px; height: 160px; }
@@ -328,6 +429,7 @@
             #main-stage { gap: 20px; }
             .pot-stats { padding: 10px; margin-bottom: 10px; }
             .stat-line { margin: 2px 0; }
+            #belt-track { min-width: 600px; gap: 8px; }
         }
 
         /* BOSS UI */
@@ -379,15 +481,15 @@
             padding: 5vh 2vw;
             overflow-y: auto;
         }
-        #tutorial-overlay, #deck-overlay, #options-overlay, #result-overlay, #game-over-overlay {
+        #help-screen, #deck-overlay, #options-screen, #result-overlay, #game-over-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.9);
             backdrop-filter: blur(5px);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             z-index: 999; display: none;
         }
 
-        #result-overlay { z-index: 2000; }
-        #game-over-overlay { z-index: 3000; background: rgba(20, 0, 0, 0.95); }
+        #result-overlay { z-index: 9500; }
+        #game-over-overlay { z-index: 9500; background: rgba(20, 0, 0, 0.95); }
 
         .result-box { 
             background: #1a1a1a; border: 1px solid #444; padding: 40px; border-radius: 10px; text-align: center; 
@@ -395,7 +497,7 @@
         }
         @keyframes popIn { to { transform: scale(1); } }
         
-        #deck-overlay { z-index: 1001; display: none; align-items: center; justify-content: flex-start; padding-top: 40px; }
+        #deck-overlay { z-index: 9500; display: none; align-items: center; justify-content: flex-start; padding-top: 40px; }
         .deck-view-container {
             width: 90%; max-width: 1200px; height: 85vh;
             display: flex; flex-direction: column;
@@ -411,14 +513,46 @@
         .shop-btn:hover { background: #444; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
 
         .tut-box { max-width: 600px; padding: 30px; background: #1a1a1a; border: 1px solid #444; border-radius: 8px; box-shadow: 0 0 30px #000; }
-        .opt-row { display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 400px; margin: 15px 0; background: #222; padding: 15px; border-radius: 8px; }
-        .switch { position: relative; display: inline-block; width: 50px; height: 24px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .4s; border-radius: 24px; }
-        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--nature); }
-        input:checked + .slider:before { transform: translateX(26px); }
 
+        /* Help Modal: Guides & Tips (Improved Layout) */
+        .help-modal { width: 1100px; max-width: 96vw; background: #0f0f11; border: 1px solid #222; padding: 12px; border-radius: 10px; box-shadow: 0 12px 80px rgba(0,0,0,0.85); display:flex; gap:16px; }
+        .help-sidebar { width: 220px; display:flex; flex-direction:column; gap:12px; padding:8px; border-right: 1px solid rgba(255,255,255,0.02); }
+        .help-nav { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px; }
+        .help-nav button { background:transparent; border:none; color:#dfe6e9; text-align:left; padding:8px 10px; border-radius:6px; cursor:pointer; transition: background 0.12s, color 0.12s; display:flex; gap:8px; align-items:center; font-weight:600; }
+        .help-nav button:hover { background: rgba(255,255,255,0.02); }
+        .help-nav button.active { background: rgba(46,204,113,0.06); color:var(--stab); border-left: 4px solid var(--stab); padding-left:8px; }
+        .help-main { flex:1; display:flex; flex-direction:column; }
+        .help-controls { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+        .help-search { flex:1; }
+        .help-search input { width:100%; padding:8px 10px; border-radius:6px; background:#0b0b0b; border:1px solid #222; color:#ddd; outline:none; }
+        .help-actions { display:flex; gap:8px; }
+        .help-actions .btn-sm { padding:6px 10px; }
+        .guide-section { border: 1px solid #1a1a1a; background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02)); padding: 8px; border-radius:6px; margin-bottom:10px; }
+        .guide-header { font-weight:700; cursor:pointer; display:flex; justify-content:space-between; align-items:center; padding:6px 2px; }
+        .guide-content { color:#ccc; font-size:0.95em; margin-top:8px; line-height:1.45; overflow:auto; max-height:0; opacity:0; transition: max-height 280ms ease, opacity 160ms ease; }
+        .guide-image { width:100%; max-height:50vh; height:auto; border-radius:6px; background: linear-gradient(135deg,#0f1113,#16171a); display:block; color:#fff; font-size:2.4em; margin:8px 0; border:1px solid rgba(255,255,255,0.03); box-shadow: inset 0 -4px 12px rgba(0,0,0,0.6); padding:8px; margin-bottom:12px; }
+        /* Ensure guide children flow normally so text doesn't layer over images */
+        .guide-content > * { position: static; z-index: auto; margin-top: 10px; }
+        .guide-body { display:block; clear:both; }
+        .guide-image img { display:block; width:100%; height:auto; object-fit:contain; border-radius:6px; }
+        .guide-image.large { max-height:70vh; }
+        .guide-image img { max-width:100%; max-height:100%; object-fit:contain; border-radius:6px; display:block; width:auto; height:auto; }
+        .guide-image svg { width:84%; height:84%; fill:none; stroke:#fff; stroke-width:1.8; }
+        .guide-caption { font-size:0.85em; color:#aaa; margin-top:6px; }
+        .guide-section.open { border-color: var(--stab); box-shadow: 0 6px 22px rgba(0,0,0,0.65); }
+        .guide-section.open .guide-header { color: var(--stab); }
+        .guide-section.open .guide-content { max-height: 70vh; opacity:1; }
+
+        /* Help column scroll behavior */
+        .help-section { flex:1; max-height:60vh; overflow-y:auto; padding-right:8px; }
+        .help-section::-webkit-scrollbar { width:8px; }
+        .help-section::-webkit-scrollbar-track { background:#0b0b0b; }
+        .help-section::-webkit-scrollbar-thumb { background:#222; border-radius:6px; }
+        .tip-list { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px; }
+        .tip-item { background:rgba(255,255,255,0.02); border:1px solid #151515; padding:10px; border-radius:6px; color:#ddd; font-size:0.95em; }
+        .help-close { margin-left:8px; }
+        @media (max-width:900px) { .help-modal { flex-direction:column; } .help-sidebar { width:100%; order:-1; border-right:none; border-bottom:1px solid rgba(255,255,255,0.02); } .help-main { width:100%; } }
+        
         .float-text {
             position: absolute; font-weight: bold; pointer-events: none;
             font-size: 1.2em;
@@ -455,11 +589,93 @@
         .shop-section-header h2 { margin: 0; font-size: 1.3em; }
         .shop-section-header span { color: var(--stab); font-weight: bold; }
         .shop-card-grid { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
-        .shop-card { width: 120px; height: 170px; font-size: 0.9em; transform: none !important; }
+        
+        /* FIXED SHOP CARD STYLES */
+        .shop-card { 
+            width: 120px; 
+            height: 170px; 
+            font-size: 0.9em; 
+            /* Removed the 'transform: none !important' which broke layout/hover */
+        }
         .shop-card .card-art { font-size: 1.8em; }
         .shop-card:hover { transform: scale(1.05) !important; z-index: 1001; }
         .shop-card.chosen { border-color: var(--stab); box-shadow: 0 0 20px var(--stab); }
         .shop-section.locked .shop-card:not(.chosen) { opacity: 0.3; cursor: not-allowed; filter: grayscale(80%); }
+        
+        /* HIDE PIN BUTTON IN SHOP */
+        .shop-card .btn-hold { display: none !important; }
+
+        #ticket-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 25px; /* Space between current and next */
+            z-index: 60;
+            flex-shrink: 0;
+        }
+
+        #preview-ticket {
+            width: 200px !important;
+            transform: rotate(1deg) scale(0.9) !important;
+            margin-top: 10px;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.3);
+            z-index: 5;
+        }
+
+        /* HOLD SLOT STYLES */
+        #hold-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 60;
+            margin-left: 20px;
+        }
+        .hold-label {
+            font-weight: bold; color: #888; margin-bottom: 5px; letter-spacing: 2px;
+        }
+        .hold-hint {
+            font-size: 0.7em; color: #555; margin-top: 5px;
+        }
+        #hold-slot {
+            width: 120px; height: 170px;
+            border: 2px dashed #444;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            transition: 0.2s;
+            position: relative;
+        }
+        #hold-slot.empty-slot:hover {
+            border-color: #666;
+            background: rgba(255,255,255,0.05);
+        }
+        
+        /* CARD PIN BUTTON */
+        .btn-hold {
+            position: absolute; top: -10px; left: -10px;
+            width: 25px; height: 25px;
+            background: #333; color: #aaa;
+            border: 1px solid #555; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 102;
+            font-size: 0.8em;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            transition: 0.2s;
+        }
+        .btn-hold:hover {
+            background: var(--stab); color: black; transform: scale(1.1);
+        }
+        
+        /* Adjust card size slightly inside the hold slot */
+        #hold-slot .card {
+            transform: scale(0.9);
+            margin: 0;
+            cursor: pointer;
+        }
+        #hold-slot .card:hover {
+            transform: scale(1);
+        }
 
     </style>
 </head>
@@ -467,27 +683,40 @@
 
 <div id="top-bar">
     <div style="display:flex">
-        <div class="res">Day: <span id="ui-day">1</span></div>
-        <div class="res" style="color:var(--pop)">Pop: <span id="ui-pop">50</span>%</div>
-        <div class="res" style="color:#aaa">Cust: <span id="ui-cust">1/3</span></div>
-        <div class="res" style="color:gold">Gold: <span id="ui-gold">0</span></div>
+        <div class="res"><span data-i18n="ui.day">Day:</span> <span id="ui-day">1</span></div>
+        <div class="res" style="color:var(--pop)"><span data-i18n="ui.pop">Pop:</span> <span id="ui-pop">50</span>%</div>
+        <div class="res" style="color:#aaa"><span data-i18n="ui.cust">Cust:</span> <span id="ui-cust">1/3</span></div>
+        <div class="res" style="color:gold"><span data-i18n="ui.gold">Gold:</span> <span id="ui-gold">0</span></div>
         <div class="res" style="color:#888; border-left:1px solid #333; padding-left:20px">
-            Deck: <span id="ui-deck-count">10</span>
-            <button class="btn-sm" onclick="game.showDeck()">View Deck</button>
+            <span data-i18n="ui.deck">Deck:</span> <span id="ui-deck-count">10</span>
+            <button class="btn-sm" data-i18n="ui.view_deck" onclick="game.showDeck()">View Deck</button>
         </div>
     </div>
     <div style="display:flex; gap: 10px;">
-        <button class="btn-sm" onclick="game.showOptions()">Options</button>
-        <button class="btn-help" onclick="game.showTutorial()">Help</button>
+        <button class="btn-help" data-i18n="ui.help" onclick="game.showTutorial()">Help</button>
+        <button class="btn-help" data-i18n="ui.options" onclick="game.showOptions()">Options</button>
+        <button class="btn-help" data-i18n="ui.save" onclick="game.showSaveScreen()">Save</button>
     </div>
 </div>
 
 <div id="main-stage">
-    <div class="ticket">
-        <h3 id="c-name">Customer</h3>
-        <div id="c-reqs"></div>
-        <div id="c-ban" class="tolerance-msg"></div>
+
+    <div id="ticket-column">
+        <!-- Main Ticket -->
+        <div class="ticket">
+            <h3 id="c-name">Customer</h3>
+            <div id="c-reqs"></div>
+            <div id="c-ban" class="tolerance-msg"></div>
+        </div>
+
+        <!-- Preview Ticket -->
+        <div id="preview-ticket" class="ticket" style="background: #e0e0e0; border: 1px dashed #999; display:none; color:#333;">
+            <h3 style="font-size:0.9em; border-bottom: 1px dotted #777; margin:0 0 5px 0;" data-i18n="label.up_next">Up Next</h3>
+            <div id="preview-icons" style="font-size: 1.8em; display: flex; gap: 10px; justify-content: center;"></div>
+        </div>
     </div>
+
+    <!-- Cauldron remains outside the wrapper -->
     <div id="cauldron-area">
         <div class="pot-stats">
             <div class="stat-line"><span style="color:var(--fire)">Fire</span><div class="bar-bg"><div id="bar-r" class="bar-fill" style="background:var(--fire); width:0%"></div></div><span id="val-r">0</span></div>
@@ -495,14 +724,22 @@
             <div class="stat-line"><span style="color:var(--frost)">Frost</span><div class="bar-bg"><div id="bar-b" class="bar-fill" style="background:var(--frost); width:0%"></div></div><span id="val-b">0</span></div>
         </div>
         <div id="pot-visual"><div id="liquid"></div></div>
-        <div style="margin-top:10px; font-size:0.8em; color:var(--stab); font-weight:bold;">STABILITY</div>
+        <div style="margin-top:10px; font-size:0.8em; color:var(--stab); font-weight:bold;" data-i18n="label.stability">STABILITY</div>
         <div class="bar-bg stab-meter"><div id="bar-stab" class="bar-fill stab-fill"></div></div>
         <div id="stab-text" style="font-size:0.8em; margin-bottom:10px;">20/20</div>
         <div class="btn-group">
-            <button id="btn-cycle-hand" class="btn-cycle" onclick="game.recycleHand()" title="Draw new cards"></button>
-            <button id="btn-main-action" class="btn-brew" onclick="game.servePotion()">SERVE POTION</button>
+            <button id="btn-main-action" class="btn-brew" onclick="game.servePotion()" data-i18n="btn.serve">SERVE POTION</button>
         </div>
     </div>
+
+    <div id="hold-container">
+        <div class="hold-label" data-i18n="label.pocket">POCKET</div>
+        <div id="hold-slot" class="empty-slot">
+            <span style="font-size:2em; opacity:0.2;">📌</span>
+        </div>
+        <div class="hold-hint">Safe from Churn</div>
+    </div>
+
 </div>
 
 <div id="boss-area">
@@ -513,7 +750,27 @@
     </div>
 </div>
 
-<div id="hand-container"></div>
+<!-- THE CONVEYOR BELT (Replaces old hand) -->
+<div id="conveyor-wrapper">
+    <!-- Left Side: Churn Lever -->
+    <div id="churn-control">
+        <div id="churn-btn" onclick="game.churnBelt()" title="Discard first card">
+            <span>🚮</span>
+        </div>
+        <div class="churn-cost" id="churn-cost-text">-1 STAB</div>
+        <div style="margin-top:10px; font-size:0.8em; color:#666">CHURN</div>
+    </div>
+
+    <!-- The Belt -->
+    <div id="belt-track"></div>
+
+    <!-- Right Side: Deck Visual -->
+    <div id="deck-stack">
+        <div style="font-size:2em;">🃏</div>
+        <div id="draw-pile-count" style="font-weight:bold">10</div>
+        <div style="font-size:0.6em; margin-top:5px">DECK</div>
+    </div>
+</div>
 
 <!-- Relic Container -->
 <div id="relic-container"></div>
@@ -533,36 +790,223 @@
 <!-- GAME OVER OVERLAY -->
 <div id="game-over-overlay">
     <div class="result-box" style="border-color:var(--danger); box-shadow: 0 0 50px rgba(231, 76, 60, 0.4);">
-        <h1 id="go-title" style="color:var(--danger); font-size: 3em; margin: 0 0 10px 0;">LAB DESTROYED</h1>
-        <p id="go-msg" style="color:#fff; font-size: 1.2em; margin-bottom: 30px;">Your volatile mixture exploded.</p>
+        <h1 id="go-title" style="color:var(--danger); font-size: 3em; margin: 0 0 10px 0;" data-i18n="go.lab_destroyed">LAB DESTROYED</h1>
+        <p id="go-msg" style="color:#fff; font-size: 1.2em; margin-bottom: 30px;" data-i18n="go.lab_destroyed_msg">Your volatile mixture exploded.</p>
         <button class="btn-brew" style="background:var(--danger); box-shadow: 0 4px 0 #c0392b;" onclick="game.hardReset()">Try Again</button>
     </div>
 </div>
 
-<!-- Tutorial -->
-<div id="tutorial-overlay">
-    <div class="tut-box">
-        <h2 style="color:var(--stab); margin-top:0">The Alchemist's Guide</h2>
-        <div class="tut-row"><div class="tut-icon">📜</div><div><strong>The Order:</strong> Fulfill the Customer's needs. Watch out for allergies.</div></div>
-        <div class="tut-row"><div class="tut-icon">👹</div><div><strong>Bosses:</strong> At the end of every day, a <span style="color:var(--danger)">Corrupted</span> customer appears.</div></div>
-        <div class="tut-row"><div class="tut-icon">⚔️</div><div><strong>Combat:</strong> In Boss Mode, your potion's total stats = Damage. Defeat them before your reputation is ruined!</div></div>
-        <div class="tut-row"><div class="tut-icon">🃏</div><div><strong>Stability:</strong> Keep an eye on Stability. If it hits 0, the lab explodes.</div></div>
-        <button class="shop-btn" style="width:100%; margin-top:10px" onclick="document.getElementById('tutorial-overlay').style.display='none'">Start Brewing</button>
+<!-- Tutorial / Help Center -->
+<div id="help-screen" style="display:none; position:fixed; inset:0; z-index:9500; background: linear-gradient(180deg, rgba(10,10,12,0.95), rgba(6,6,8,0.95)); align-items:center; justify-content:center;">
+    <div class="help-modal" role="dialog" aria-labelledby="help-title" aria-modal="true">
+        <aside class="help-sidebar">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                <h3 id="help-title" style="margin:0; color:var(--stab);" data-i18n="ui.help">Help</h3>
+                <div style="font-size:0.8em; color:#888">H / ?</div>
+            </div>
+
+            <nav id="help-nav" class="help-nav" aria-label="Help sections">
+                <button data-target="guides" class="active" data-i18n="help.nav.guides">📚 Guides</button>
+                <button data-target="tips" data-i18n="help.nav.tips">💡 Tips</button>
+                <button data-target="shortcuts" data-i18n="help.nav.shortcuts">⌨️ Shortcuts</button>
+            </nav>
+
+            <div style="margin-top:auto; display:flex; gap:6px;">
+                <button class="btn-sm" data-i18n="btn.close" onclick="game.hideHelpScreen()">Close</button>
+            </div>
+        </aside>
+
+        <div class="help-main">
+            <div class="help-controls">
+                <div class="help-search"><input id="help-search" type="search" data-i18n="help.search" placeholder="Search guides & tips..." /></div>
+                <div class="help-actions">
+                    <button id="help-expand-all" class="btn-sm" data-i18n="help.expand_all">Expand All</button>
+                    <button id="help-collapse-all" class="btn-sm" data-i18n="help.collapse_all">Collapse All</button>
+                </div>
+            </div>
+
+            <div style="flex:1; display:flex; gap:12px; align-items:flex-start;">
+                <div id="help-guides" class="help-section">
+                    <div class="guide-section">
+                        <div class="guide-header"><span data-i18n="guide.header.basics">Basics</span> <span style="opacity:0.7">• Quick start</span></div>
+                        <div class="guide-content">
+                            <div class="guide-image large"><img src="assets/help/order_card.png" alt="Customer order ticket" /></div>
+                            <div class="guide-caption" data-i18n="guide.basics.caption">Customer order example: the ticket lists required Fire/Nature/Frost — aim to match these values closely.</div>
+
+                            <div class="guide-body" data-i18n="guide.basics.body">
+                                <p><strong>3 simple steps:</strong></p>
+                                <ol>
+                                    <li><strong>Inspect order:</strong> Read the customer's ticket and note any bans (allergies). Check the sizes before playing.</li>
+                                    <li><strong>Build potion:</strong> Use cards to increase the required stats while keeping an eye on Stability. Prefer small increments early, big plays later.</li>
+                                    <li><strong>Serve & compare:</strong> When the sum matches closely (diff ≤1), serve for a Masterpiece. Otherwise consider small adjustments or accept the loss strategically.</li>
+                                </ol>
+
+                                <p><strong>Extended example:</strong> If a ticket wants Fire 3, Nature 2 and bans Frost, plan two medium Fire plays and a small Nature play instead of a single big Fire burst—this preserves Stab and gives room to correct later.</p>
+                                <p><strong>Practical tips:</strong> Keep one stabilizer in the deck early, and avoid playing cards of banned types. Use the small Pocket trick (pin your finisher) to delay until the perfect turn.</p>
+                            </div>
+                            <p data-i18n="guide.basics.note"><strong>Stab-aware serving:</strong> When uncertain, prefer a slightly underfilled potion over an overfilled one—it's easier and cheaper to top-up later than to recover from low Stab.</p>
+                        </div>
+                    </div> 
+
+                    <div class="guide-section">
+                        <div class="guide-header"><span data-i18n="guide.header.conveyor">Conveyor & Flow</span> <span style="opacity:0.7">• Belt mechanics</span></div>
+                        <div class="guide-content">
+                            <div class="guide-image"><img src="assets/help/belt.png" alt="Conveyor belt screenshot" /></div>
+                            <div class="guide-caption" data-i18n="guide.caption.conveyor">Leftmost = oldest. Use churn to discard bad early cards, but plan for the resulting shift.</div>
+
+                            <div class="guide-body" data-i18n="guide.conveyor.body"></div> 
+                        </div>
+                    </div> 
+
+                    <div class="guide-section">
+                        <div class="guide-header"><span data-i18n="guide.header.cauldron">Cauldron & Stability</span> <span style="opacity:0.7">• Pot rules</span></div>
+                        <div class="guide-content">
+                            <div class="guide-image"><img src="assets/help/cauldron.png" alt="Cauldron screenshot" /></div>
+                            <div class="guide-caption" data-i18n="guide.caption.cauldron">Stability is the lab's lifeline—spend it wisely and keep a safety margin.</div>
+
+                            <div class="guide-body" data-i18n="guide.cauldron.body"></div>
+                        </div>
+                    </div> 
+
+                    <div class="guide-section">
+                        <div class="guide-header"><span data-i18n="guide.header.cards">Cards & Deck</span> <span style="opacity:0.7">• Types & combos</span></div>
+                        <div class="guide-content">
+                            <div class="guide-image"><img src="assets/help/deck.png" alt="Deck screenshot" /></div>
+                            <div class="guide-caption" data-i18n="guide.caption.cards">Think in archetypes (stabilize, burst, or conversion). Build your deck around a goal.</div>
+
+                            <div class="guide-body" data-i18n="guide.cards.body"></div>
+                        </div>
+                    </div>
+
+                    <div class="guide-section">
+                        <div class="guide-header"><span data-i18n="guide.header.shop">Shop & Relics</span> <span style="opacity:0.7">• Day-end strategy</span></div>
+                        <div class="guide-content">
+                            <div class="guide-image"><img src="assets/help/shop.png" alt="Shop screenshot" /></div>
+                            <div class="guide-caption" data-i18n="guide.caption.shop">Relics are permanent boosts; plan purchases around your deck needs.</div>
+
+                            <div class="guide-body" data-i18n="guide.shop.body"></div>
+                        </div>
+                    </div> 
+
+                    <div class="guide-section">
+                        <div class="guide-header"><span data-i18n="guide.header.boss">Boss Combat</span> <span style="opacity:0.7">• Final challenge</span></div>
+                        <div class="guide-content">
+                            <div class="guide-image"><img src="assets/help/boss.png" alt="Boss encounter screenshot" /></div>
+                            <div class="guide-caption" data-i18n="guide.caption.boss">Bosses ignore customer rules — your potion strength equals damage to the boss.</div>
+
+                            <div class="guide-body" data-i18n="guide.boss.body"></div>
+                        </div>
+                    </div>
+
+                    <div class="guide-section">
+                        <div class="guide-header"><span data-i18n="guide.header.advanced">Advanced Combos</span> <span style="opacity:0.7">• Chain planning</span></div>
+                        <div class="guide-content">
+                            <div class="guide-image large"><img src="assets/help/combos.png" alt="Combos / belt screenshot" /></div>
+                            <div class="guide-caption" data-i18n="guide.caption.advanced">Set up sequences that exploit Last-Played and on-play triggers to amplify effects.</div>
+
+                            <div class="guide-body" data-i18n="guide.advanced.body"></div>
+                        </div>
+                    </div>
+
+                    <div class="guide-section">
+                        <div class="guide-header"><span data-i18n="guide.header.deck">Deckbuilding</span> <span style="opacity:0.7">• Trim & focus</span></div>
+                        <div class="guide-content">
+                            <div class="guide-image"><img src="assets/help/deck_build.png" alt="Deck building screenshot" /></div>
+                            <div class="guide-caption" data-i18n="guide.caption.deck">A lean, synergistic deck wins more consistently than a bloated one.</div>
+
+                            <div class="guide-body" data-i18n="guide.deck.body"></div>
+                        </div>
+                    </div>
+
+                    <div class="guide-section">
+                        <div class="guide-header"><span data-i18n="guide.header.relics">Relic Interactions</span> <span style="opacity:0.7">• Synergy tips</span></div>
+                        <div class="guide-content">
+                            <div class="guide-image"><img src="assets/help/relics.png" alt="Relics & shop screenshot" /></div>
+                            <div class="guide-caption" data-i18n="guide.caption.relics">Relics change rules—read them closely and plan purchases to work with your deck.</div>
+
+                            <div class="guide-body" data-i18n="guide.relics.body"></div>
+                        </div>
+                    </div>
+
+                    <div class="guide-section">
+                        <div class="guide-header"><span data-i18n="guide.header.daily">Daily Strategy</span> <span style="opacity:0.7">• Manage risk & gold</span></div>
+                        <div class="guide-content">
+                            <div class="guide-image"><img src="assets/help/daily.png" alt="Day overview screenshot" /></div>
+                            <div class="guide-caption" data-i18n="guide.caption.daily">Balance short-term survival with long-term upgrades—don't overspend early on flashy cards.</div>
+
+                            <div class="guide-body" data-i18n="guide.daily.body"></div>
+                        </div>
+                    </div>
+
+
+                </div>
+
+                <div id="help-tips" class="help-section" style="display:none;">
+                    <ul class="tip-list">
+                        <li class="tip-item" data-i18n="tip.1">📌 Pocket one clutch card to protect a combo.</li>
+                        <li class="tip-item" data-i18n="tip.2">🚮 Churn to remove early bad cards, but don't run your Stab too low.</li>
+                        <li class="tip-item" data-i18n="tip.3">⚖️ Aim for difference ≤1 to get 'Masterpiece' rewards.</li>
+                        <li class="tip-item" data-i18n="tip.4">🧂 Stabilizers are great late-game to keep your pot healthy.</li>
+                        <li class="tip-item" data-i18n="tip.5">🪙 Sell duplicate basics in the shop for quick gold between days.</li>
+                        <li class="tip-item" data-i18n="tip.6">🔥 Save high-value fire/nature/frost sets for boss to maximize damage.</li>
+                        <li class="tip-item" data-i18n="tip.7">🔁 If a relic makes churn free, you can be more aggressive with skipping.</li>
+                        <li class="tip-item" data-i18n="tip.8">💡 Watch the floating hints — they often tell you when a combo triggers.</li>
+                    </ul>
+                </div>
+
+
+
+                <div id="help-shortcuts" class="help-section" style="display:none;">
+                    <ul class="tip-list">
+                        <li class="tip-item" data-i18n="shortcut.h">H or ? — Open/close Help</li>
+                        <li class="tip-item" data-i18n="shortcut.esc">Esc — Close current overlay</li>
+                        <li class="tip-item" data-i18n="shortcut.click_card">Click card — Play it</li>
+                        <li class="tip-item" data-i18n="shortcut.pin_icon">Pin icon — Move to Pocket</li> 
+                    </ul>
+                </div>
+            </div>
+
+            <div style="margin-top:12px; display:flex; gap:10px;">
+                <button class="shop-btn" style="flex:1" data-i18n="btn.start" onclick="game.hideHelpScreen()">Start Brewing</button>
+            </div>
+        </div>
+    </div>
+</div> 
+
+<!-- Image Lightbox Overlay -->
+<div id="image-overlay" style="display:none; position:fixed; inset:0; z-index:9600; background: rgba(0,0,0,0.9); align-items:center; justify-content:center;">
+    <img id="image-overlay-img" src="" alt="" style="max-width:90%; max-height:90%; border-radius:8px; box-shadow:0 10px 60px rgba(0,0,0,0.8);" />
+</div>
+
+<!-- Options Screen (full-screen) -->
+<div id="options-screen" style="display:none; position:fixed; inset:0; z-index:9500; background: linear-gradient(180deg, rgba(10,10,12,0.95), rgba(6,6,8,0.95)); align-items:center; justify-content:center;">
+    <div class="options-box" style="background: rgba(18,18,22,0.98); border:1px solid #333; padding:20px; border-radius:8px; width:520px; max-width:92vw; color:#ddd;">
+        <h2 style="margin-top:0; color:var(--stab);" data-i18n="ui.options">Options</h2>
+        <div style="margin-top:8px;">
+            <label style="display:block; color:#ccc; margin-bottom:6px;">Language</label>
+            <select id="lang-select" style="width:100%; padding:8px; border-radius:6px; background:#0b0b0d; color:#fff; border:1px solid #333;">
+                <option value="en">English</option>
+                <option value="es">Español</option>
+            </select>
+        </div>
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+            <button class="btn-sm" data-i18n="btn.close" onclick="game.hideOptions()">Close</button>
+            <button class="btn-sm" style="margin-left:auto;" onclick="game.showReplays()">Replays</button>
+            <button class="btn-sm" onclick="game.showSaveScreen()">Save/Load</button>
+        </div>
     </div>
 </div>
 
-<!-- Options -->
-<div id="options-overlay">
-    <div class="tut-box" style="text-align:center;">
-        <h2 style="color:white; margin-top:0">Options</h2>
-        <div class="opt-row">
-            <span>Stack Duplicate Cards in Hand</span>
-            <label class="switch">
-                <input type="checkbox" id="opt-stack-hand" onchange="game.toggleStacking(this.checked)">
-                <span class="slider"></span>
-            </label>
+<!-- Main Screen (full-screen) -->
+<div id="main-screen" style="display:none; position:fixed; inset:0; z-index:4500; background: linear-gradient(180deg,#07070a,#020204); color:#ddd; align-items:center; justify-content:center;">
+    <div style="text-align:center; width:720px; max-width:96vw; padding:32px; border-radius:12px; background: rgba(8,8,10,0.94); border:1px solid #222; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
+        <h1 style="margin:0 0 6px; font-size:48px; color:var(--stab);">Volatile Alchemist</h1>
+        <div style="color:#bbb; margin-bottom:18px;">Brew, sell, and survive. Replay your best runs.</div>
+        <div style="display:flex; flex-direction:column; gap:12px; margin-top:8px;">
+            <button class="shop-btn" onclick="game.resetRun(); game.hideMainScreen();">Start New Run</button>
+            <div style="display:flex; gap:8px; justify-content:center; margin-top:8px;">
+            </div>
         </div>
-        <button class="shop-btn" style="background:var(--danger)" onclick="document.getElementById('options-overlay').style.display='none'">Close</button>
     </div>
 </div>
 
@@ -570,23 +1014,61 @@
 <div id="deck-overlay">
     <div class="deck-view-container">
         <div class="deck-header">
-            <h2 style="color:white; margin-top:0;">Your Deck</h2>
-            <p style="color:#aaa; margin-bottom:15px; font-size:0.9em;">Duplicates are stacked.</p>
-            <button class="shop-btn" style="background:var(--danger);" onclick="document.getElementById('deck-overlay').style.display='none'">Close View</button>
+            <h2 style="color:white; margin-top:0;" data-i18n="ui.view_deck">Your Deck</h2>
+            <button class="shop-btn" style="background:var(--danger);" data-i18n="btn.close_view" onclick="document.getElementById('deck-overlay').style.display='none'">Close View</button>
         </div>
         <div id="deck-grid-content" class="shop-card-grid deck-scroll-area"></div>
+    </div>
+</div>
+
+<!-- Replay Screen (full-screen) -->
+<div id="replay-screen" style="display:none; position:fixed; inset:0; z-index:9500; background: linear-gradient(180deg, rgba(8,8,10,0.96), rgba(2,2,3,0.96)); align-items:center; justify-content:center;">
+    <div class="replay-box" style="background: rgba(16,16,19,0.98); border:1px solid #333; padding:16px; border-radius:8px; width:720px; max-width:96vw; color:#ddd;">
+        <h2 style="margin-top:0;color:var(--stab);">Replays</h2>
+        <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <button class="btn-sm" onclick="game.startReplayRecording()">Start Recording</button>
+            <button class="btn-sm" onclick="game.stopReplayRecording()">Stop & Save</button>
+            <input id="replay-name" placeholder="Name" style="flex:1; padding:6px; border-radius:6px; background:#0b0b0d; color:#fff; border:1px solid #333;" />
+            <button class="btn-sm" onclick="game.clearCurrentRecording()">Clear</button>
+        </div>
+        <div style="margin-bottom:8px;">
+            <div id="replay-log" style="height:120px; overflow:auto; background:#050507; border-radius:6px; padding:8px; border:1px solid #222; color:#ccc;"></div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+            <div style="flex:1;">
+                <div id="replays-list"></div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+                <button class="btn-sm" onclick="game.refreshReplays()">Refresh</button>
+                <button class="btn-sm" onclick="game.hideReplays()">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Save / Load Screen -->
+<div id="save-screen" style="display:none; position:fixed; inset:0; z-index:9500; background: linear-gradient(180deg, rgba(10,10,12,0.95), rgba(6,6,8,0.95)); align-items:center; justify-content:center;">
+    <div style="background: rgba(18,18,22,0.98); border:1px solid #333; padding:20px; border-radius:8px; width:720px; max-width:96vw; color:#ddd;">
+        <h2 style="margin-top:0;color:var(--stab);">Save / Load</h2>
+        <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <input id="save-name" placeholder="Save name" style="flex:1; padding:6px; border-radius:6px; background:#0b0b0d; color:#fff; border:1px solid #333;" />
+            <button class="btn-sm" onclick="game.saveNewSlot()">Create Save</button>
+            <button class="btn-sm" onclick="game.refreshSaves()">Refresh</button>
+            <button class="btn-sm" onclick="game.hideSaveScreen()">Close</button>
+        </div>
+        <div style="margin-bottom:8px; max-height:360px; overflow:auto;" id="save-list"></div>
     </div>
 </div>
 
 <!-- Shop / End Screen -->
 <div id="overlay">
     <div id="shop-content-wrapper">
-        <h1 id="ov-title" style="color:#fff">Day Complete</h1>
+        <h1 id="ov-title" style="color:#fff" data-i18n="ov.day_complete">Day Complete</h1>
         <div id="ov-desc" style="color:#ccc; text-align:center"></div>
         <div id="shop-main-container"></div>
         <div style="display: flex; gap: 20px; margin-top: 30px;">
             <button class="btn-sm" style="background:#555; color:gold;" onclick="game.rerollShop()">Reroll Shop (20g)</button>
-            <button class="shop-btn" style="background:var(--nature)" onclick="game.nextDay()">Next Day</button>
+            <button class="shop-btn" style="background:var(--nature)" data-i18n="btn.next_day" onclick="game.nextDay()">Next Day</button>
         </div>
     </div>
 </div>
@@ -595,11 +1077,12 @@
 /* --- CONFIG & CARDS --- */
 const RELICS_DB = [
     { id: 'reinforced_beaker', name: 'Reinforced Beaker', icon: '🧪', price: 70, desc: 'Start each day with +5 Maximum Stability.' },
-    { id: 'tome_of_plenty', name: 'Tome of Plenty', icon: '📖', price: 90, desc: 'Draw 1 extra card each time you draw.' },
+    { id: 'tome_of_plenty', name: 'Tome of Plenty', icon: '📖', price: 90, desc: 'Churning (skipping the first card) costs 0 Stability.' },
     { id: 'scholars_lens', name: "Scholar's Lens", icon: '🧐', price: 80, desc: "When a customer arrives, automatically add 20% of their highest requirement to the cauldron." },
     { id: 'merchants_coin', name: "Merchant's Coin", icon: '🪙', price: 60, desc: 'All cards and relics in the shop cost 20% less.' },
     { id: 'golden_ladle', name: 'Golden Ladle', icon: '🥄', price: 75, desc: 'Gain +5 bonus Gold for every "Great Brew" or "Masterpiece" you create.' },
-    { id: 'alchemists_timepiece', name: "Alchemist's Timepiece", icon: '⌛', price: 65, desc: "Your first hand redraw is free each day." },
+    { id: 'alchemists_timepiece', name: "Alchemist's Timepiece", icon: '⌛', price: 65, desc: "Start each customer with a random Potion effect already applied." },
+    { id: 'crystal_shuffler', name: 'Crystal Shuffler', icon: '🔮', price: 100, desc: 'Shuffling now shuffles 2 cards at once without extra stability cost.' },
 ];
 
 const CARDS_DB = [
@@ -610,7 +1093,14 @@ const CARDS_DB = [
     { id: 'bloom', rarity:'common', name: 'Bloom', type: 'nature', icon: '🌿', cost: 2, desc: '+6 Nature', shop_category: 'basic', fn: (p) => { p.g += 6; p.s -= 2; } },
     { id: 'drop', rarity:'common', name: 'Drop', type: 'frost', icon: '💧', cost: 1, desc: '+3 Frost', shop_category: 'basic', fn: (p) => { p.b += 3; p.s -= 1; } },
     { id: 'ice', rarity:'common', name: 'Ice', type: 'frost', icon: '❄️', cost: 2, desc: '+6 Frost', shop_category: 'basic', fn: (p) => { p.b += 6; p.s -= 2; } },
-    
+
+    // New Commons (added)
+    { id: 'measure', rarity:'common', name: 'Measure', type: 'void', icon: '⚖️', cost: 1, desc: '+2 All Stats', shop_category: 'basic', fn: (p) => { p.r += 2; p.g += 2; p.b += 2; p.s -= 1; } },
+    { id: 'sparkle', rarity:'common', name: 'Sparkle', type: 'fire', icon: '✨', cost: 1, desc: '+2 Fire', shop_category: 'basic', fn: (p) => { p.r += 2; p.s -= 1; } },
+    { id: 'leaflet', rarity:'common', name: 'Leaflet', type: 'nature', icon: '🍃', cost: 1, desc: '+2 Nature', shop_category: 'basic', fn: (p) => { p.g += 2; p.s -= 1; } },
+    { id: 'dilute', rarity:'common', name: 'Dilute', type: 'frost', icon: '💦', cost: 0, desc: '-2 Fire, +2 Stab', shop_category: 'basic', fn: (p) => { p.r = Math.max(0, p.r - 2); p.s += 2; } },
+    { id: 'chill', rarity:'common', name: 'Chill', type: 'frost', icon: '🧊', cost: 0, desc: '-2 Nature, +2 Stab', shop_category: 'basic', fn: (p) => { p.g = Math.max(0, p.g - 2); p.s += 2; } },
+
     // Stabilizers (Common/Rare)
     { id: 'salt', rarity:'common', name: 'Salt', type: 'void', icon: '🧂', cost: 0, desc: '+4 Stab\n-1 All Stats', shop_category: 'stabilizer', fn: (p) => { p.s += 4; p.r=Math.max(0,p.r-1); p.g=Math.max(0,p.g-1); p.b=Math.max(0,p.b-1); } },
     { id: 'spice', rarity:'rare', name: 'Spice', type: 'void', icon: '🧂', cost: 0, desc: '+8 Stab\n-2 All Stats', shop_category: 'stabilizer', fn: (p) => { p.s += 6; p.r=Math.max(0,p.r-2); p.g=Math.max(0,p.g-2); p.b=Math.max(0,p.b-2); } },
@@ -619,11 +1109,10 @@ const CARDS_DB = [
     // Void Cards
     { id: 'catalyst_r', rarity:'rare', name: 'Ignite', type: 'fire', icon: '🧨', cost: 4, desc: 'Double current Fire', shop_category: 'void', fn: (p) => { p.r *= 2; p.s -= 4; } },
     { id: 'balance', rarity:'rare', name: 'Balance', type: 'void', icon: '⚖️', cost: 2, desc: 'Set all stats to average', shop_category: 'void', fn: (p) => { let avg = Math.floor((p.r+p.g+p.b)/3); p.r=avg; p.g=avg; p.b=avg; p.s -= 2; } },
-    { id: 'void_focus', rarity:'rare', name: 'Focus', type: 'void', icon: '👁️', cost: 0, desc: '+2 Stab\nDraw 1 Card', shop_category: 'void', fn: (p, g) => { p.s += 2; g.drawCards(1); } },
-    { id: 'study', rarity:'common', name: 'Study', type: 'void', icon: '📖', cost: 2, desc: 'Draw 2 Cards', shop_category: 'void', fn: (p, g) => { p.s -= 2; g.drawCards(2); } },
+    { id: 'void_focus', rarity:'rare', name: 'Focus', type: 'void', icon: '👁️', cost: 0, desc: '+3 Stab', shop_category: 'void', fn: (p, g) => { p.s += 3; } },
     { id: 'purify', rarity:'common', name: 'Purify', type: 'void', icon: '✨', cost: 0, desc: 'Remove all Fire\n+6 Stab', shop_category: 'stabilizer', fn: (p) => { p.r = 0; p.s += 6; } },
     { id: 'overgrowth', rarity:'rare', name: 'Overgrowth', type: 'nature', icon: '🌲', cost: 4, desc: 'Double current Nature', shop_category: 'void', fn: (p) => { p.g *= 2; p.s -= 4; } },
-    { id: 'gamble', rarity:'rare', name: 'Risk', type: 'void', icon: '🎲', cost: 1, desc: 'Randomize Stats (0-20)', shop_category: 'void', fn: (p) => { p.r=Math.floor(Math.random()*21); p.g=Math.floor(Math.random()*21); p.b=Math.floor(Math.random()*21); p.s-=1; } },
+    { id: 'gamble', rarity:'rare', name: 'Risk', type: 'void', icon: '🎲', cost: 1, desc: 'Randomize Stats (0-20)', shop_category: 'void', fn: (p, g) => { const rVal = (g && g.randomInt) ? g.randomInt(21) : Math.floor(Math.random()*21); const gVal = (g && g.randomInt) ? g.randomInt(21) : Math.floor(Math.random()*21); const bVal = (g && g.randomInt) ? g.randomInt(21) : Math.floor(Math.random()*21); p.r = rVal; p.g = gVal; p.b = bVal; p.s -= 1; } },
     { id: 'black_hole', rarity:'epic', name: 'Black Hole', type: 'void', icon: '⚫', cost: 0, desc: 'Reset ALL to 0\n+15 Stab', shop_category: 'void', fn: (p) => { p.r=0; p.g=0; p.b=0; p.s+=15; } },
     { id: 'reinforce', rarity:'rare', name: 'Reinforce', type: 'void', icon: '🏗️', cost: 1, desc: '+6 MAX Stab\n(Until End of Day)', shop_category: 'stabilizer', fn: (p) => { p.s -= 1; p.maxS += 6; } },
 
@@ -642,22 +1131,22 @@ const CARDS_DB = [
     // Combo Cards
     { id: 'phoenix', rarity:'epic', name: 'Phoenix', type: 'fire', icon: '🦅', cost: 4, desc: '+8 Fire\nIf Stab < 5: Set Stab to 10', shop_category: 'void', fn: (p, g) => { 
         p.r += 8; p.s -= 4; 
-        if(p.s < 5) { p.s = 10; g.spawnFloat("Reborn!", "gold"); } 
+        if(p.s < 5) { p.s = 10; g.spawnFloat(g.t('msg.reborn'), "gold"); } 
     }},
     { id: 'mudslide', rarity:'rare', name: 'Mudslide', type: 'nature', icon: '🌊', cost: 3, desc: '+5 Nature\n+5 Frost', shop_category: 'basic', fn: (p) => { p.g += 5; p.b += 5; p.s -= 3; } },
     { id: 'steam_engine', rarity:'rare', name: 'Steam Engine', type: 'frost', icon: '🚂', cost: 2, desc: '+6 Frost\nIf Fire > 10: +4 Stab', shop_category: 'void', fn: (p, g) => { 
         p.b += 6; p.s -= 2;
-        if(p.r > 10) { p.s += 4; g.spawnFloat("Powered!", "#fff"); }
+        if(p.r > 10) { p.s += 4; g.spawnFloat(g.t('msg.powered'), "#fff"); }
     }},
     { id: 'steam_blast', rarity:'rare', name: 'Steam Blast', type: 'frost', icon: '🌫️', cost: 3, desc: '+8 Frost\nIf Last was Fire: +4 Stab', shop_category: 'void', fn: (p, g) => { 
         p.b += 8; p.s -= 3;
-        if(g.lastPlayedType === 'fire') { p.s += 4; g.spawnFloat("Combo!", "#fff"); }
+        if(g.lastPlayedType === 'fire') { p.s += 4; g.spawnFloat(g.t('msg.combo'), "#fff"); }
     }},
-    { id: 'wildfire', rarity:'epic', name: 'Wildfire', type: 'fire', icon: '🌋', cost: 4, desc: '+5 Fire\n+3 for every Fire in hand', shop_category: 'void', fn: (p, g) => {
+    { id: 'wildfire', rarity:'epic', name: 'Wildfire', type: 'fire', icon: '🌋', cost: 4, desc: '+5 Fire\n+2 for every Fire card in belt', shop_category: 'void', fn: (p, g) => {
         let bonus = 0;
-        g.hand.forEach(hid => {
+        g.belt.forEach(hid => {
             const card = CARDS_DB.find(c => c.id === hid);
-            if(card.type === 'fire' && card.id !== 'wildfire') bonus += 3;
+            if(card.type === 'fire') bonus += 2;
         });
         p.r += 5 + bonus; p.s -= 4;
         if(bonus>0) g.spawnFloat(`+${bonus} Bonus`, "var(--fire)");
@@ -669,7 +1158,11 @@ const CARDS_DB = [
     { id: 'photosynthesis', rarity:'rare', name: 'Growth', type: 'nature', icon: '🌻', cost: 2, desc: '+5 Nature\nIf Stab < 10: +10 instead', shop_category: 'void', fn: (p) => {
         if(p.s < 10) { p.g += 10; } else { p.g += 5; }
         p.s -= 2;
-    }}
+    }},
+    { id: 'frostbite', rarity:'epic', name: 'Frostbite', type: 'frost', icon: '🧛‍♂️', cost: 4, desc: '+10 Frost\nIf Frost > Fire: +5 Stab', shop_category: 'void', fn: (p, g) => {
+        p.b += 10; p.s -= 4;
+        if(p.b > p.r) { p.s += 5; g.spawnFloat(g.t('msg.powered'), "#fff"); }
+    }},
 ];
 
 /* --- ENGINE --- */
@@ -678,7 +1171,10 @@ class Game {
         this.defaultDeck = ['ember','ember','root','root','drop','drop','salt','salt','spice','vent'];
         this.deck = [...this.defaultDeck];
         this.drawPile = [];
-        this.hand = [];
+        this.discardPile = [];
+        this.belt = []; // The conveyor belt array (max 5)
+        this.beltSize = 5;
+
         this.day = 1;
         this.gold = 0;
         this.popularity = 50;
@@ -692,18 +1188,31 @@ class Game {
         
         this.lastPlayedType = null;
         this.nextCardFree = false;
-        this.options = { stackHand: false };
+
+        this.heldCard = null;
 
         this.relics = []; 
-        this.freeRecycleUsed = false;
         
+        // Replay recording
+        this.replayRecording = false;
+        this.replayEvents = [];
+        try { this.replays = JSON.parse(localStorage.getItem('va_replays') || '[]'); } catch(e) { this.replays = []; }
+        // Seed RNG for deterministic behavior (can be overridden)
+        this.seedRandom(Date.now() ^ 0x9e3779b9);
+        this.isPlayingBack = false;
+
+        // Animation control
+        this.isAnimatingBelt = false;
+        // Animation constant: match transition in CSS
+        this.BELT_ANIM_DURATION = 200; 
+
         // BOSS VARIABLES
         this.bossActive = false;
         this.boss = { name: '', hp: 0, maxHp: 0, dmg: 5 };
     }
 
     init() {
-        this.showTutorial();
+        // Don't auto-open the tutorial on startup; allow user to open it explicitly
         this.startDay();
     }
     
@@ -713,11 +1222,16 @@ class Game {
         this.day = 1;
         this.gold = 0;
         this.popularity = 50;
-        this.hand = [];
+        this.belt = [];
+        this.discardPile = [];
+        this.drawPile = [];
         this.pot.maxS = this.maxStabBase;
         this.pot.s = this.maxStabBase;
         this.pot.r=0; this.pot.g=0; this.pot.b=0;
         this.bossActive = false;
+
+        this.heldCard = null;
+        this.renderHold();
         
         document.getElementById('game-over-overlay').style.display = 'none';
         document.getElementById('overlay').style.display = 'none';
@@ -726,10 +1240,138 @@ class Game {
         this.startDay();
     }
 
-    showTutorial() { document.getElementById('tutorial-overlay').style.display = 'flex'; }
-    showOptions() { document.getElementById('options-overlay').style.display = 'flex'; }
-    
-    toggleStacking(val) { this.options.stackHand = val; this.renderHand(); }
+    showTutorial() { this.showHelp('guides'); }
+    showHelp(type = 'guides') {
+        const overlay = document.getElementById('help-screen');
+        const guidesEl = document.getElementById('help-guides');
+        const tipsEl = document.getElementById('help-tips');
+        const shortcutsEl = document.getElementById('help-shortcuts');
+        overlay.style.display = 'flex';
+
+        // Initialize help UI only once
+        if (!this._helpSetup) {
+            this._helpSetup = true;
+
+            // Nav buttons
+            Array.from(document.querySelectorAll('#help-nav button')).forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const target = btn.dataset.target || 'guides';
+                    Array.from(document.querySelectorAll('#help-nav button')).forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    // hide/show sections
+                    document.getElementById('help-guides').style.display = target === 'guides' ? 'block' : 'none';
+                    document.getElementById('help-tips').style.display = target === 'tips' ? 'block' : 'none';
+                    document.getElementById('help-shortcuts').style.display = target === 'shortcuts' ? 'block' : 'none';
+                    document.getElementById('help-search').value = '';
+                });
+            });
+
+            // Expand / Collapse actions
+            document.getElementById('help-expand-all').onclick = () => {
+                Array.from(document.querySelectorAll('#help-guides .guide-section')).forEach(sec => {
+                    sec.classList.add('open');
+                    const c = sec.querySelector('.guide-content'); if (c) c.style.display = 'block';
+                });
+            };
+            document.getElementById('help-collapse-all').onclick = () => {
+                Array.from(document.querySelectorAll('#help-guides .guide-section')).forEach(sec => {
+                    sec.classList.remove('open');
+                    const c = sec.querySelector('.guide-content'); if (c) c.style.display = 'none';
+                });
+            };
+
+            // Click to toggle individual guides
+            Array.from(document.querySelectorAll('#help-guides .guide-header')).forEach(h => {
+                h.addEventListener('click', () => {
+                    const sec = h.parentElement;
+                    const c = sec.querySelector('.guide-content');
+                    const open = sec.classList.toggle('open');
+                    c.style.display = open ? 'block' : 'none';
+                });
+            });
+
+            // Click-to-zoom for guide images
+            Array.from(document.querySelectorAll('.guide-image img')).forEach(img => {
+                img.style.cursor = 'zoom-in';
+                img.addEventListener('click', (e) => {
+                    const overlay = document.getElementById('image-overlay');
+                    const overlayImg = document.getElementById('image-overlay-img');
+                    overlayImg.src = img.src;
+                    overlayImg.alt = img.alt || '';
+                    overlay.style.display = 'flex';
+                });
+            });
+
+            // Close overlay on click
+            document.getElementById('image-overlay').addEventListener('click', (e) => {
+                document.getElementById('image-overlay').style.display = 'none';
+            });
+
+            // Search/filter
+            const search = document.getElementById('help-search');
+            const filterGuides = (q) => {
+                q = q.trim().toLowerCase();
+                Array.from(document.querySelectorAll('#help-guides .guide-section')).forEach(sec => {
+                    const title = sec.querySelector('.guide-header').innerText.toLowerCase();
+                    const content = sec.querySelector('.guide-content').innerText.toLowerCase();
+                    const match = (title + ' ' + content).includes(q);
+                    sec.style.display = match ? 'block' : 'none';
+                });
+            };
+            const filterTips = (q) => {
+                q = q.trim().toLowerCase();
+                Array.from(document.querySelectorAll('#help-tips .tip-item')).forEach(t => {
+                    t.style.display = t.innerText.toLowerCase().includes(q) ? 'block' : 'none';
+                });
+            };
+            search.addEventListener('input', (e) => {
+                const q = e.target.value;
+                filterGuides(q); filterTips(q);
+            });
+
+            // Keyboard shortcuts: H / ? to toggle help, Esc to close
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'H' || e.key === 'h' || e.key === '?') {
+                    if (document.getElementById('help-screen').style.display === 'flex') {
+                        game.hideHelpScreen();
+                    } else {
+                        this.showHelp('guides');
+                    }
+                }
+                if (e.key === 'Escape') {
+                    // Close help or image overlay
+                    game.hideHelpScreen();
+                    document.getElementById('image-overlay').style.display = 'none';
+                }
+            });
+
+            // Language selector hookup
+            const langSelect = document.getElementById('lang-select');
+            if (langSelect) {
+                langSelect.value = this.language || localStorage.getItem('va_lang') || 'en';
+                langSelect.addEventListener('change', (ev) => { this.setLanguage(ev.target.value); });
+            }
+
+            // Apply saved language on startup
+            const savedLang = localStorage.getItem('va_lang') || 'en';
+            this.setLanguage(savedLang);
+        }
+
+        // Show requested section
+        Array.from(document.querySelectorAll('#help-nav button')).forEach(b => b.classList.remove('active'));
+        const navBtn = document.querySelector(`#help-nav button[data-target="${type}"]`) || document.querySelector('#help-nav button[data-target="guides"]');
+        if (navBtn) navBtn.classList.add('active');
+        document.getElementById('help-guides').style.display = type === 'guides' ? 'block' : 'none';
+        document.getElementById('help-tips').style.display = type === 'tips' ? 'block' : 'none';
+        document.getElementById('help-shortcuts').style.display = type === 'shortcuts' ? 'block' : 'none';
+
+        // Do not auto-open any guide by default (user preference)
+        // const first = document.querySelector('#help-guides .guide-section');
+        // if (first) { first.classList.add('open'); const cont = first.querySelector('.guide-content'); if (cont) cont.style.display = 'block'; }
+
+        // Focus search
+        document.getElementById('help-search').focus();
+    }
     hasRelic(id) { return this.relics.includes(id); }
 
     startDay() {
@@ -741,7 +1383,7 @@ class Game {
         document.getElementById('boss-area').style.display = 'none';
         document.getElementById('c-name').parentElement.classList.remove('boss-mode');
         document.getElementById('btn-main-action').className = 'btn-brew';
-        document.getElementById('btn-main-action').innerText = "SERVE POTION";
+        document.getElementById('btn-main-action').innerText = this.t('btn.serve');
         
         if (this.popularity >= 90) this.customersPerDay = 5;
         else if (this.popularity >= 60) this.customersPerDay = 4;
@@ -755,19 +1397,26 @@ class Game {
 
         this.pot.maxS = this.maxStabBase + (this.hasRelic('reinforced_beaker') ? 5 : 0);
         this.resetPot();
-        this.shuffleDeck();
-        this.hand = [];
-        this.drawCards(5);
-        this.freeRecycleUsed = false;
-        this.updateRecycleButtonText();
+        
+        // Deck initialization for the day
+        this.drawPile = [...this.deck];
+        this.discardPile = [];
+        this.shuffleDrawPile();
+        this.belt = [];
+        this.fillBelt(false); // Initial fill no animation
+        
         this.nextCustomer();
     }
 
     nextCustomer() {
         if(this.dailyCustomers.length > 0) {
             const customerData = this.dailyCustomers.shift();
+            // remember the active customer so snapshots/restores keep the same customer
+            this.currentCustomer = customerData;
             this.target = customerData.target;
             this.bannedType = customerData.bannedType;
+            // record this transition for replays so playback can reproduce customers
+            try { this.recordReplayEvent({ type: 'next_customer', customer: JSON.parse(JSON.stringify(this.currentCustomer)), index: this.currentCustomerIndex }); } catch(e) {}
             
             document.getElementById('c-name').innerText = `${customerData.name} (${this.currentCustomerIndex}/${this.customersPerDay})`;
             let html = '';
@@ -777,18 +1426,14 @@ class Game {
             document.getElementById('c-reqs').innerHTML = html;
             document.getElementById('c-ban').innerText = this.bannedType ? `*Allergic to ${this.bannedType.toUpperCase()} (Keep it 0)` : "";
             
-            // Refill Stab between customers
             if (this.currentCustomerIndex > 1) {
                  this.pot.s = Math.min(this.pot.maxS, this.pot.s + 10);
                  this.pot.r = 0; this.pot.g = 0; this.pot.b = 0;
                  this.lastPlayedType = null;
                  this.nextCardFree = false;
-                 this.hand = [];
-                 this.drawCards(5);
-                 this.spawnFloat("+10 Stability", "var(--stab)");
+                 this.spawnFloat(`+10 ${this.t('label.stability')}`, "var(--stab)");
             }
 
-            // Scholar's Lens Relic
             if(this.hasRelic('scholars_lens')) {
                 let highestReq = 0; let highestType = '';
                 if(this.target.r > highestReq) { highestReq = this.target.r; highestType = 'r'; }
@@ -801,31 +1446,153 @@ class Game {
                 }
             }
         }
+
+        const previewEl = document.getElementById('preview-ticket');
+        const iconsEl = document.getElementById('preview-icons');
+        
+        if (this.dailyCustomers.length > 0) {
+            const next = this.dailyCustomers[0];
+            previewEl.style.display = 'block';
+            let iconHtml = '';
+            if (next.target.r > 0) iconHtml += '<div title="Fire Needed">🔥</div>';
+            if (next.target.g > 0) iconHtml += '<div title="Nature Needed">🌿</div>';
+            if (next.target.b > 0) iconHtml += '<div title="Frost Needed">❄️</div>';
+            iconsEl.innerHTML = iconHtml;
+        } else {
+            if (this.bossActive) {
+                previewEl.style.display = 'none';
+            } else {
+                previewEl.style.display = 'block';
+                iconsEl.innerHTML = '<div style="color:var(--danger)">👹</div>';
+            }
+        }
+
         this.updateUI();
     }
 
-    shuffleDeck() {
-        this.drawPile = [...this.deck];
+    shuffleDrawPile() {
         for (let i = this.drawPile.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
+            const j = Math.floor(this.random() * (i + 1));
             [this.drawPile[i], this.drawPile[j]] = [this.drawPile[j], this.drawPile[i]];
         }
     }
 
-    drawCards(n) {
-        const cardsToDraw = n + (this.hasRelic('tome_of_plenty') ? 1 : 0);
-        for(let i=0; i < cardsToDraw; i++) {
-            if(this.drawPile.length === 0) { this.shuffleDeck(); }
-            if(this.drawPile.length > 0) { this.hand.push(this.drawPile.pop()); }
+    /* --- CONVEYOR LOGIC --- */
+
+    drawOneCard() {
+        if (this.drawPile.length === 0) {
+            if (this.discardPile.length === 0) {
+                return null;
+            }
+            this.drawPile = [...this.discardPile];
+            this.discardPile = [];
+            this.shuffleDrawPile();
         }
-        this.renderHand();
+        return this.drawPile.pop();
     }
-    
-    createHandCardElement(card) {
+
+    // Ensures belt has 5 cards and updates rendering
+    fillBelt(animateEntry = true) {
+        let addedCard = false;
+        while (this.belt.length < this.beltSize) {
+            const newCard = this.drawOneCard();
+            if (newCard) {
+                this.belt.push(newCard);
+                // Record draw for replay
+                try { this.recordReplayEvent({ type: 'draw', card: newCard }); } catch(e) {}
+                addedCard = true;
+            } else {
+                break;
+            }
+        }
+        this.renderBelt(animateEntry && addedCard);
+        this.updateUI();
+    }
+
+    churnBelt() {
+        if (this.isAnimatingBelt || this.belt.length === 0) return;
+
+        const isFree = this.hasRelic('tome_of_plenty');
+        if (!isFree && this.pot.s < 1) {
+            this.spawnFloat(this.t('msg.need_stab'), "var(--danger)");
+            return;
+        }
+
+        // Immediate visual feedback: fade the leftmost card right away
+        try {
+            const beltTrack = document.getElementById('belt-track');
+            const targetEl = beltTrack.children[0];
+            if (targetEl) { targetEl.style.transition = 'opacity 80ms linear'; targetEl.style.opacity = '0.35'; }
+        } catch (e) {}
+
+        this.animateCardAction(0, 'churn', () => {
+            const discarded = this.belt.shift(); 
+            this.discardPile.push(discarded);
+
+            // record churn
+            try { this.recordReplayEvent({ type: 'churn', card: discarded }); } catch(e) {}
+            
+            if (!isFree) {
+                this.pot.s -= 1;
+                this.spawnFloat(`-1 ${this.t('label.stability')}`, "#aaa");
+            } else {
+                this.spawnFloat(this.t('msg.free_churn'), "var(--stab)");
+            }
+            
+            if(this.pot.s <= 0) {
+                this.pot.s = 0; this.updateUI(); this.explode();
+            } else {
+                this.fillBelt(true);
+            }
+        });
+    }
+
+    // Generalized animation for any action that removes a card and shifts belt
+    animateCardAction(index, actionType, callback) {
+        this.isAnimatingBelt = true;
+        
+        const beltTrack = document.getElementById('belt-track');
+        const cards = Array.from(beltTrack.children);
+        const targetCard = cards[index];
+        const cardsToShift = cards.slice(index + 1);
+
+        // 1. Target animation (Drop or Fly)
+        if (actionType === 'hold') {
+            targetCard.style.transform = 'translateY(-200px) scale(0.5)';
+        } if (actionType === 'churn') {
+            // Churn or Play: Transparency down
+            targetCard.style.opacity = '0';
+        } else if (actionType === 'fillbelt') {
+            // New card entry: from right side
+            targetCard.style.transform = 'translateX(200px)';
+        }
+
+        // 2. Shift animation
+        const shiftAmount = -115; 
+        
+        cardsToShift.forEach(card => {
+            card.style.transform = `translateX(${shiftAmount}px)`;
+        });
+
+        // 3. Wait for animation, then execute logic
+        setTimeout(() => {
+            this.isAnimatingBelt = false;
+            callback();
+        }, this.BELT_ANIM_DURATION);
+    }
+
+    createHandCardElement(card, isHeld = false) {
         const el = document.createElement('div');
         el.className = `card type-${card.type} ${card.rarity}`;
         let costStyle = this.nextCardFree ? 'text-decoration:line-through; color:gold' : '';
+        
+        let pinBtn = '';
+        if (!isHeld) {
+            pinBtn = `<div class="btn-hold" title="Move to Pocket (Save)">📌</div>`;
+        }
+
         el.innerHTML = `
+            ${pinBtn}
             <div class="card-header">${card.name}</div>
             <div class="card-art">${card.icon}</div>
             <div class="card-desc">${card.desc.replace('\n','<br>')}</div>
@@ -859,8 +1626,11 @@ class Game {
     showDeck() {
         const container = document.getElementById('deck-grid-content');
         container.innerHTML = '';
+        const allCards = [...this.drawPile, ...this.belt, ...this.discardPile];
+        if (this.heldCard) allCards.push(this.heldCard);
+        
         const counts = {};
-        this.deck.forEach(id => { counts[id] = (counts[id] || 0) + 1; });
+        allCards.forEach(id => { counts[id] = (counts[id] || 0) + 1; });
         const uniqueIds = Object.keys(counts).sort();
 
         uniqueIds.forEach(cid => {
@@ -881,6 +1651,157 @@ class Game {
         document.getElementById('pot-visual').className = '';
     }
 
+    // --- Deterministic RNG helpers ---
+    seedRandom(seed) {
+        // Mulberry32 with in-place mutable seed so we can capture current RNG state in snapshots
+        this._rngSeed = seed >>> 0;
+        this._rng = () => {
+            // mutate the stored seed so takeSnapshot() reflects the current PRNG state
+            this._rngSeed |= 0;
+            this._rngSeed = (this._rngSeed + 0x6D2B79F5) | 0;
+            var t = Math.imul(this._rngSeed ^ (this._rngSeed >>> 15), 1 | this._rngSeed);
+            t = t + Math.imul(t ^ (t >>> 7), 61 | t) ^ t;
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+    }
+    random() { return (this._rng ? this._rng() : Math.random()); }
+    randomInt(max) { return Math.floor(this.random() * max); }
+    shuffleArray(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(this.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+    }
+
+    // --- Replay snapshot helpers ---
+    takeSnapshot() {
+        return {
+            seed: this._rngSeed,
+            day: this.day,
+            deck: [...this.deck],
+            drawPile: [...this.drawPile],
+            discardPile: [...this.discardPile],
+            belt: [...this.belt],
+            heldCard: this.heldCard,
+            pot: JSON.parse(JSON.stringify(this.pot)),
+            gold: this.gold,
+            popularity: this.popularity,
+            currentCustomerIndex: this.currentCustomerIndex,
+            dailyCustomers: JSON.parse(JSON.stringify(this.dailyCustomers)),
+            // include the currently active customer (if any) so restores keep the same customer
+            currentCustomer: this.currentCustomer ? JSON.parse(JSON.stringify(this.currentCustomer)) : null,
+            bossActive: !!this.bossActive,
+            boss: this.boss ? JSON.parse(JSON.stringify(this.boss)) : null,
+            relics: [...this.relics]
+        };
+    }
+    restoreSnapshot(snap) {
+        if (!snap) return;
+        this.seedRandom(snap.seed || Date.now());
+        this.day = snap.day || 1;
+        this.deck = [...(snap.deck || this.defaultDeck)];
+        this.drawPile = [...(snap.drawPile || [])];
+        this.discardPile = [...(snap.discardPile || [])];
+        this.belt = [...(snap.belt || [])];
+        this.heldCard = snap.heldCard || null;
+        this.pot = Object.assign({}, this.pot, snap.pot || {});
+        this.gold = snap.gold || 0;
+        this.popularity = snap.popularity || 50;
+        this.currentCustomerIndex = snap.currentCustomerIndex || 1;
+        this.dailyCustomers = snap.dailyCustomers ? JSON.parse(JSON.stringify(snap.dailyCustomers)) : [];
+        // restore active customer (if present in the snapshot)
+        this.currentCustomer = snap.currentCustomer ? JSON.parse(JSON.stringify(snap.currentCustomer)) : null;
+        if (this.currentCustomer) {
+            this.target = this.currentCustomer.target || { r:0,g:0,b:0 };
+            this.bannedType = this.currentCustomer.bannedType || null;
+            // update visible customer UI to reflect the restored active customer
+            const nameEl = document.getElementById('c-name');
+            if (nameEl) nameEl.innerText = `${this.currentCustomer.name} (${this.currentCustomerIndex}/${this.customersPerDay})`;
+            const reqEl = document.getElementById('c-reqs');
+            if (reqEl) {
+                let html = '';
+                if (this.target.r>0) html += `<div class="req-row"><span style="color:var(--fire)">Fire</span><span>${this.target.r}</span></div>`;
+                if (this.target.g>0) html += `<div class="req-row"><span style="color:var(--nature)">Nature</span><span>${this.target.g}</span></div>`;
+                if (this.target.b>0) html += `<div class="req-row"><span style="color:var(--frost)">Frost</span><span>${this.target.b}</span></div>`;
+                reqEl.innerHTML = html;
+            }
+            const banEl = document.getElementById('c-ban');
+            if (banEl) banEl.innerText = this.bannedType ? `*Allergic to ${this.bannedType.toUpperCase()} (Keep it 0)` : "";
+        }
+        // restore boss state if present
+        this.bossActive = !!snap.bossActive;
+        this.boss = snap.boss ? JSON.parse(JSON.stringify(snap.boss)) : { name: '', hp: 0, maxHp: 0, dmg: 0 };
+        if (this.bossActive) {
+            const bossUI = document.getElementById('boss-area'); if (bossUI) bossUI.style.display = 'block';
+            const bossName = document.getElementById('boss-name'); if (bossName) bossName.innerText = `⚠ ${this.boss.name} ⚠`;
+            document.getElementById('c-name').innerText = this.t('boss.final_challenge');
+            document.getElementById('c-name').parentElement.classList.add('boss-mode');
+            this.updateBossBar();
+        }
+        this.relics = [...(snap.relics || [])];
+        this.updateUI(); this.renderHold(); this.renderBelt(false);
+    }
+
+    // Reset the run (new game) in-place without creating a new Game instance
+    resetRun() {
+        this.deck = [...this.defaultDeck];
+        this.gold = 0; this.popularity = 50; this.day = 1;
+        this.relics = []; this.drawPile = []; this.discardPile = [];
+        this.belt = []; this.heldCard = null; this.pot = { r:0,g:0,b:0,s:this.maxStabBase, maxS:this.maxStabBase };
+        this.seedRandom(Date.now() ^ 0x9e3779b9);
+        this.startDay();
+        this.spawnFloat('New Run Started', '#8f8');
+        // Close main screen if visible
+        const ms = document.getElementById('main-screen'); if (ms) ms.style.display = 'none';
+        // Save a quick resume snapshot
+        this.quickSave ? this.quickSave() : null;
+    }
+
+    // Backwards-compatible alias: keep old name
+    showMainMenu() { this.showMainScreen(); }
+
+    showMainScreen() {
+        const menu = document.getElementById('main-screen');
+        if (!menu) return;
+        // Continue enabled if we've made progress or a quick resume exists
+        const contBtn = document.getElementById('btn-continue');
+        const canContinue = (this.day > 1) || (this.drawPile && this.drawPile.length>0) || (this.gold > 0) || (this.relics && this.relics.length>0) || !!localStorage.getItem('va_resume');
+        if (contBtn) { contBtn.disabled = !canContinue; contBtn.style.opacity = canContinue ? '1' : '0.5'; }
+        menu.style.display = 'flex';
+        // Keyboard shortcuts (Enter to start, Esc to close)
+        const keyHandler = (e) => {
+            if (menu.style.display !== 'flex') return;
+            if (e.key === 'Enter') { game.resetRun(); game.hideMainScreen(); }
+            if (e.key === 'Escape') { game.hideMainScreen(); }
+        };
+        document.addEventListener('keydown', keyHandler);
+        this._mainMenuKeyHandler = keyHandler;
+    }
+
+    hideMainScreen() {
+        const menu = document.getElementById('main-screen');
+        if (!menu) return;
+        menu.style.display = 'none';
+        if (this._mainMenuKeyHandler) { document.removeEventListener('keydown', this._mainMenuKeyHandler); this._mainMenuKeyHandler = null; }
+    }
+
+    resumeRun() {
+        // Try to load a quick resume snapshot from localStorage
+        const raw = localStorage.getItem('va_resume');
+        if (raw) {
+            try {
+                const snap = JSON.parse(raw);
+                this.restoreSnapshot(snap);
+                this.spawnFloat('Resumed Run', '#8f8');
+            } catch (e) { console.error('Failed to resume snapshot', e); }
+        }
+        this.hideMainScreen();
+    }
+
+    showOptions() { const s = document.getElementById('options-screen'); if (!s) return; s.style.display = 'flex'; }
+
+    quickSave() { try { localStorage.setItem('va_resume', JSON.stringify(this.takeSnapshot())); } catch(e) { console.warn('quickSave failed', e); } }
+
     generateCustomerLogic() {
         const difficulty = 10 + (this.day * 5);
         let r = 0, g = 0, b = 0, ban = null, name = "Traveler";
@@ -897,7 +1818,7 @@ class Game {
             { name: "Phoenix Cultist", weight: 0.15, fn: () => { r = Math.floor(difficulty*0.6); g = Math.floor(difficulty*0.4); b = 0; ban = 'frost'; } }
         ];
 
-        let roll = Math.random();
+        let roll = this.random();
         let selected = types[types.length-1];
         let running = 0;
         for(let t of types) {
@@ -909,7 +1830,6 @@ class Game {
         return { name: selected.name || name, target: {r,g,b}, bannedType: ban };
     }
 
-    /* --- BOSS LOGIC --- */
     startBossEncounter() {
         this.bossActive = true;
         const bossHpScale = 40 + (this.day * 10); // HP Scales per day
@@ -920,27 +1840,25 @@ class Game {
             dmg: 4 + Math.floor(this.day * 1.2)
         };
         
-        // UI Updates for Boss
+        // record boss start for replay
+        try { this.recordReplayEvent({ type: 'start_boss', boss: JSON.parse(JSON.stringify(this.boss)), day: this.day }); } catch(e) {}
+
         document.getElementById('boss-area').style.display = 'block';
         document.getElementById('boss-name').innerText = `⚠ ${this.boss.name} ⚠`;
-        document.getElementById('c-name').innerText = "FINAL CHALLENGE";
+        document.getElementById('c-name').innerText = this.t('boss.final_challenge');
         document.getElementById('c-name').parentElement.classList.add('boss-mode');
-        document.getElementById('c-reqs').innerHTML = `<div style="text-align:center; color:#e74c3c; font-weight:bold;">DEFEAT THE ENTITY</div><div style="text-align:center; font-size:0.8em; color:#aaa; margin-top:5px;">Potion Strength = Damage, Boss Attacks lower your population after you attack</div>`;
+        document.getElementById('c-reqs').innerHTML = `<div style="text-align:center; color:#e74c3c; font-weight:bold;">${this.t('boss.defeat_text')}</div><div style="text-align:center; font-size:0.8em; color:#aaa; margin-top:5px;">Potion Strength = Damage, Boss Attacks lower your population after you attack</div>`;
         document.getElementById('c-ban').innerText = "";
         
-        // Change button to Attack
         const btn = document.getElementById('btn-main-action');
         btn.className = 'btn-attack';
-        btn.innerText = "ATTACK BOSS";
+        btn.innerText = this.t('btn.attack');
 
-        // Full heal stability for the fight
         this.pot.s = this.pot.maxS;
         this.resetPot();
-        this.hand = [];
-        this.drawCards(5);
         this.updateBossBar();
         this.updateUI();
-        this.spawnFloat("BOSS FIGHT!", "var(--danger)");
+        this.spawnFloat(this.t('msg.boss_fight'), "var(--danger)");
     }
 
     updateBossBar() {
@@ -963,16 +1881,16 @@ class Game {
         for(let i=0; i<12; i++) {
             const p = document.createElement('div');
             p.className = 'particle';
-            const size = Math.random() * 8 + 4;
+            const size = this.random() * 8 + 4;
             p.style.width = size + 'px'; p.style.height = size + 'px';
-            p.style.background = cols[Math.floor(Math.random()*cols.length)];
+            p.style.background = cols[Math.floor(this.random()*cols.length)];
             const mainRect = container.getBoundingClientRect();
             p.style.left = (rect.left + rect.width/2 - mainRect.left) + 'px';
             p.style.top = (rect.top + rect.height/2 - mainRect.top) + 'px';
-            const tx = (Math.random() - 0.5) * 100;
-            const ty = -Math.random() * 150 - 50;
+            const tx = (this.random() - 0.5) * 100;
+            const ty = -this.random() * 150 - 50;
             p.style.setProperty('--tx', `${tx}px`); p.style.setProperty('--ty', `${ty}px`);
-            p.style.animation = `floatUpFade ${0.5 + Math.random()}s ease-out forwards`;
+            p.style.animation = `floatUpFade ${0.5 + this.random()}s ease-out forwards`; 
             container.appendChild(p);
             setTimeout(() => p.remove(), 2000);
         }
@@ -986,77 +1904,151 @@ class Game {
         setTimeout(() => splash.remove(), 600);
     }
 
-    playCard(indexOrId) {
-        let index;
-        if (typeof indexOrId === 'string') {
-            index = this.hand.indexOf(indexOrId);
-            if(index === -1) return;
-        } else {
-            index = indexOrId;
-        }
-
-        const cardId = this.hand[index];
-        const card = CARDS_DB.find(c => c.id === cardId);
-
+    cauldronVisualEffects(cardType) {
         const pot = document.getElementById('pot-visual');
         pot.classList.remove('pot-pulse');
-        void pot.offsetWidth; pot.classList.add('pot-pulse');
+        void pot.offsetWidth; 
+        pot.classList.add('pot-pulse');
         setTimeout(() => pot.classList.remove('pot-pulse'), 150);
 
-        this.createParticles(card.type);
+        this.createParticles(cardType); 
         this.triggerSplash();
-        
+    }
+
+    playCard(beltIndex) {
+        if (this.isAnimatingBelt || beltIndex < 0 || beltIndex >= this.belt.length) return;
+
+        const cardId = this.belt[beltIndex];
+        const card = CARDS_DB.find(c => c.id === cardId);
+
+        const sCost = this.nextCardFree ? 0 : card.cost;
+        if (this.pot.s < sCost) {
+            this.spawnFloat(this.t('msg.not_enough_stab'), "var(--danger)");
+            return;
+        }
+
+        // Immediate visual feedback: fade the clicked card right away
+        try {
+            const beltTrack = document.getElementById('belt-track');
+            const targetEl = beltTrack.children[beltIndex];
+            if (targetEl) { targetEl.style.transition = 'opacity 80ms linear'; targetEl.style.opacity = '0.35'; }
+        } catch (e) {}
+
+        this.animateCardAction(beltIndex, 'play', () => {
+            const wasFree = this.nextCardFree;
+            if(wasFree) this.nextCardFree = false; 
+
+            const sBefore = this.pot.s;
+            card.fn(this.pot, this);
+
+            // record play event
+            try { this.recordReplayEvent({ type: 'play', card: cardId, beltIndex }); } catch(e) {}
+
+            if (wasFree) {
+                 if(this.pot.s < sBefore) this.pot.s = sBefore; 
+                 this.spawnFloat(this.t('msg.free'), "#fff");
+            }
+            if (!wasFree) this.pot.s -= card.cost;
+
+            this.lastPlayedType = card.type;
+            if(this.pot.r < 0) this.pot.r = 0; if(this.pot.g < 0) this.pot.g = 0; if(this.pot.b < 0) this.pot.b = 0;
+            if(this.pot.s > this.pot.maxS) this.pot.s = this.pot.maxS;
+
+            this.cauldronVisualEffects(card.type);
+
+            this.discardPile.push(cardId);
+            this.belt.splice(beltIndex, 1);
+            this.spawnFloat(card.icon, '#fff');
+
+            if(this.pot.s <= 0) {
+                this.pot.s = 0; this.updateUI(); this.explode();
+            } else {
+                this.fillBelt(true);
+            }
+        });
+    }
+
+    playHeldCard() {
+        if (!this.heldCard) return;
+
+        const cardId = this.heldCard;
+        const card = CARDS_DB.find(c => c.id === cardId);
+
         const wasFree = this.nextCardFree;
         if(wasFree) this.nextCardFree = false; 
 
         const sBefore = this.pot.s;
         card.fn(this.pot, this);
 
+        // record held play
+        try { this.recordReplayEvent({ type: 'play_held', card: cardId }); } catch(e) {}
+
         if (wasFree) {
              if(this.pot.s < sBefore) this.pot.s = sBefore; 
-             this.spawnFloat("Free!", "#fff");
+             this.spawnFloat(this.t('msg.free'), "#fff");
         }
 
         this.lastPlayedType = card.type;
         if(this.pot.r < 0) this.pot.r = 0; if(this.pot.g < 0) this.pot.g = 0; if(this.pot.b < 0) this.pot.b = 0;
         if(this.pot.s > this.pot.maxS) this.pot.s = this.pot.maxS;
 
-        this.hand.splice(index, 1);
+        this.cauldronVisualEffects(card.type); 
+
+        this.heldCard = null;
         this.spawnFloat(card.icon, '#fff');
 
         if(this.pot.s <= 0) {
             this.pot.s = 0; this.updateUI(); this.explode();
         } else {
-            this.renderHand(); this.updateUI();
+            this.renderHold();
+            this.updateUI();
         }
     }
 
-    updateRecycleButtonText() {
-        const btn = document.getElementById('btn-cycle-hand');
-        const drawCount = 5 + (this.hasRelic('tome_of_plenty') ? 1 : 0);
-        if (this.hasRelic('alchemists_timepiece') && !this.freeRecycleUsed) {
-            btn.innerHTML = `Draw ${drawCount}<br>(FREE)`;
-        } else {
-            btn.innerHTML = `Draw ${drawCount}<br>(-3 Stab)`;
+    moveToHold(beltIndex) {
+        if (this.isAnimatingBelt || this.heldCard !== null) {
+            this.spawnFloat(this.t('msg.pocket_full'), "gray");
+            return;
         }
+
+        // Immediate visual feedback: fade the clicked card right away
+        try {
+            const beltTrack = document.getElementById('belt-track');
+            const targetEl = beltTrack.children[beltIndex];
+            if (targetEl) { targetEl.style.transition = 'opacity 80ms linear'; targetEl.style.opacity = '0.35'; }
+        } catch (e) {}
+
+        this.animateCardAction(beltIndex, 'hold', () => {
+            const cardId = this.belt[beltIndex];
+            this.belt.splice(beltIndex, 1);
+            this.heldCard = cardId;
+            
+            // record hold
+            try { this.recordReplayEvent({ type: 'hold', card: cardId, beltIndex }); } catch(e) {}
+
+            this.fillBelt(true);
+            this.renderHold();
+        });
     }
 
-    recycleHand() {
-        const isFree = this.hasRelic('alchemists_timepiece') && !this.freeRecycleUsed;
-        if (!isFree && this.pot.s <= 3) { alert("Not enough stability!"); return; }
-
-        if (isFree) {
-            this.freeRecycleUsed = true;
-            this.spawnFloat("Free Redraw!", "var(--stab)");
-        } else {
-            this.pot.s -= 3;
-            this.spawnFloat("-3 Stab", "var(--stab)");
-        }
+    renderHold() {
+        const slot = document.getElementById('hold-slot');
+        slot.innerHTML = '';
         
-        this.hand = [];
-        this.drawCards(5);
-        this.updateRecycleButtonText();
-        this.updateUI();
+        if (this.heldCard === null) {
+            slot.className = 'empty-slot';
+            slot.innerHTML = '<span style="font-size:2em; opacity:0.2;">📌</span>';
+        } else {
+            slot.className = '';
+            const card = CARDS_DB.find(c => c.id === this.heldCard);
+            const el = this.createHandCardElement(card, true);
+            
+            el.onclick = () => {
+                this.playHeldCard();
+            };
+            
+            slot.appendChild(el);
+        }
     }
 
     spawnFloat(txt, col) {
@@ -1070,6 +2062,268 @@ class Game {
         setTimeout(() => el.remove(), 1000);
     }
 
+    /* --- REPLAY / RECORDING --- */
+    recordReplayEvent(ev) {
+        if (!this.replayRecording) return;
+        const e = { t: Date.now(), day: this.day, ev };
+        this.replayEvents.push(e);
+        try {
+            const log = document.getElementById('replay-log');
+            if (log) { const row = document.createElement('div'); row.style.fontSize='0.9em'; row.style.padding='2px 0'; row.innerText = `${new Date(e.t).toLocaleTimeString()} — ${JSON.stringify(ev)}`; log.appendChild(row); log.scrollTop = log.scrollHeight; }
+        } catch (e) {}
+    }
+
+    startReplayRecording() {
+        this.replayRecording = true;
+        this.replayEvents = [];
+        // snapshot the game state and seed for deterministic replay
+        this.currentRecordingSnapshot = this.takeSnapshot();
+        const log = document.getElementById('replay-log'); if (log) { log.innerHTML = ''; const row = document.createElement('div'); row.innerText = 'Recording...'; row.style.opacity='0.7'; log.appendChild(row); }
+        this.spawnFloat('Recording Started', '#8f8');
+    }
+
+    stopReplayRecording() {
+        if (!this.replayRecording) return;
+        this.replayRecording = false;
+        const nameInput = document.getElementById('replay-name');
+        const name = (nameInput && nameInput.value) ? nameInput.value : (`Run ${new Date().toLocaleString()}`);
+        this.saveReplay(name, this.replayEvents);
+        this.spawnFloat('Recording Saved', '#8f8');
+        this.refreshReplays();
+    }
+
+    clearCurrentRecording() {
+        this.replayEvents = [];
+        const log = document.getElementById('replay-log'); if (log) log.innerHTML = '';
+        this.spawnFloat('Recording Cleared', '#ccc');
+    }
+
+    saveReplay(name, events) {
+        // Ensure snapshot reflects current state if available
+        let snap = this.currentRecordingSnapshot || this.takeSnapshot();
+        // If snapshot doesn't include an active customer but the game currently has one, include it
+        if ((!snap.currentCustomer || snap.currentCustomer === null) && this.currentCustomer) {
+            snap.currentCustomer = JSON.parse(JSON.stringify(this.currentCustomer));
+            snap.currentCustomerIndex = this.currentCustomerIndex;
+        }
+        // If there's a current customer and no 'next_customer' event recorded, prepend one so playback reproduces the starting customer
+        if (this.currentCustomer) {
+            const hasNextCustomerEvent = (events || []).some(e => e.ev && e.ev.type === 'next_customer');
+            if (!hasNextCustomerEvent) {
+                const ev = { t: Date.now(), day: this.day, ev: { type: 'next_customer', customer: JSON.parse(JSON.stringify(this.currentCustomer)), index: this.currentCustomerIndex } };
+                events = [ev, ...(events || [])];
+            }
+        }
+        const replay = { name: name || `Run ${new Date().toLocaleString()}`, created: Date.now(), events: events || [], meta: { day: this.day, version: 1, seed: this._rngSeed, snapshot: snap } };
+        this.replays.push(replay);
+        localStorage.setItem('va_replays', JSON.stringify(this.replays));
+    }
+
+    refreshReplays() {
+        try { this.replays = JSON.parse(localStorage.getItem('va_replays') || '[]'); } catch(e) { this.replays = []; }
+        const list = document.getElementById('replays-list');
+        if (!list) return;
+        list.innerHTML = '';
+        if (this.replays.length === 0) { list.innerText = 'No saved replays.'; return; }
+        this.replays.forEach((r, i) => {
+            const row = document.createElement('div'); row.style.display='flex'; row.style.justifyContent='space-between'; row.style.alignItems='center'; row.style.padding='6px 4px';
+            const left = document.createElement('div'); left.style.flex='1'; left.innerText = `${r.name} — ${new Date(r.created).toLocaleString()} (${r.events.length} events)`;
+            const btns = document.createElement('div'); btns.style.display='flex'; btns.style.gap='6px';
+            const play = document.createElement('button'); play.className='btn-sm'; play.innerText='Play'; play.onclick = () => this.playReplay(i);
+            const del = document.createElement('button'); del.className='btn-sm'; del.style.background='var(--danger)'; del.innerText='Delete'; del.onclick = () => { if(confirm('Delete replay?')){ this.replays.splice(i,1); localStorage.setItem('va_replays', JSON.stringify(this.replays)); this.refreshReplays(); } };
+            btns.appendChild(play); btns.appendChild(del);
+            row.appendChild(left); row.appendChild(btns); list.appendChild(row);
+        });
+    }
+
+    // Show / Hide Replays Screen
+    showReplays() {
+        const s = document.getElementById('replay-screen'); if (!s) return; this.refreshReplays(); s.style.display = 'flex';
+    }
+    hideReplays() { const s = document.getElementById('replay-screen'); if (s) s.style.display = 'none'; }
+
+    // Show / Hide Help Screen
+    showHelpScreen() { const s = document.getElementById('help-screen'); if (!s) return; s.style.display = 'flex'; }
+    hideHelpScreen() { const s = document.getElementById('help-screen'); if (s) s.style.display = 'none'; }
+
+    // Show / Hide Options Screen
+    showOptions() { const s = document.getElementById('options-screen'); if (!s) return; s.style.display = 'flex'; }
+    hideOptions() { const s = document.getElementById('options-screen'); if (s) s.style.display = 'none'; }
+
+    // Save / Load API
+    showSaveScreen() { const s = document.getElementById('save-screen'); if (!s) return; this.refreshSaves(); s.style.display = 'flex'; }
+    hideSaveScreen() { const s = document.getElementById('save-screen'); if (s) s.style.display = 'none'; }
+
+    refreshSaves() {
+        try { this.saves = JSON.parse(localStorage.getItem('va_saves') || '[]'); } catch(e) { this.saves = []; }
+        const list = document.getElementById('save-list'); if (!list) return;
+        list.innerHTML = '';
+        if (this.saves.length === 0) { list.innerText = 'No saves yet.'; return; }
+        this.saves.forEach((sv, i) => {
+            const row = document.createElement('div'); row.style.display='flex'; row.style.justifyContent='space-between'; row.style.alignItems='center'; row.style.padding='8px 6px'; row.style.borderBottom='1px solid rgba(255,255,255,0.02)';
+            const left = document.createElement('div'); left.style.flex='1'; left.innerHTML = `<strong>${sv.name}</strong><div style="font-size:0.85em;color:#aaa">Day ${sv.snapshot.day} • ${new Date(sv.created).toLocaleString()}</div>`;
+            const btns = document.createElement('div'); btns.style.display='flex'; btns.style.gap='6px';
+            const load = document.createElement('button'); load.className='btn-sm'; load.innerText='Load'; load.onclick = () => this.loadSave(i);
+            const save = document.createElement('button'); save.className='btn-sm'; save.innerText='Overwrite'; save.onclick = () => { if(confirm('Overwrite this save?')) this.saveToSlot(i); };
+            const del = document.createElement('button'); del.className='btn-sm'; del.style.background='var(--danger)'; del.innerText='Delete'; del.onclick = () => { if(confirm('Delete save?')){ this.saves.splice(i,1); localStorage.setItem('va_saves', JSON.stringify(this.saves)); this.refreshSaves(); } };
+            btns.appendChild(load); btns.appendChild(save); btns.appendChild(del);
+            row.appendChild(left); row.appendChild(btns); list.appendChild(row);
+        });
+    }
+
+    saveNewSlot() {
+        const nameInput = document.getElementById('save-name'); const name = (nameInput && nameInput.value) ? nameInput.value : (`Save ${new Date().toLocaleString()}`);
+        try { this.saves = JSON.parse(localStorage.getItem('va_saves') || '[]'); } catch(e) { this.saves = []; }
+        const snap = this.takeSnapshot(); const save = { name, created: Date.now(), snapshot: snap, meta: { day: snap.day, gold: snap.gold } };
+        this.saves.push(save); localStorage.setItem('va_saves', JSON.stringify(this.saves)); this.refreshSaves(); this.spawnFloat('Saved', '#8f8');
+    }
+
+    saveToSlot(i) {
+        try { this.saves = JSON.parse(localStorage.getItem('va_saves') || '[]'); } catch(e) { this.saves = []; }
+        const snap = this.takeSnapshot(); this.saves[i] = { name: this.saves[i] ? this.saves[i].name : (`Save ${new Date().toLocaleString()}`), created: Date.now(), snapshot: snap, meta: { day: snap.day, gold: snap.gold } };
+        localStorage.setItem('va_saves', JSON.stringify(this.saves)); this.refreshSaves(); this.spawnFloat('Saved', '#8f8');
+    }
+
+    loadSave(i) {
+        try { this.saves = JSON.parse(localStorage.getItem('va_saves') || '[]'); } catch(e) { this.saves = []; }
+        const sv = this.saves[i]; if (!sv) return; this.restoreSnapshot(sv.snapshot); this.spawnFloat('Loaded Save', '#8f8'); this.hideSaveScreen();
+    }
+
+    // End of added screens and save system
+
+    playReplay(index) {
+        const r = this.replays[index]; if (!r) return;
+        if (!r.meta || !r.meta.snapshot) { this.spawnFloat('Replay missing snapshot', 'var(--danger)'); return; }
+        // restore snapshot deterministically
+        this.restoreSnapshot(r.meta.snapshot);
+        this.seedRandom(r.meta.seed || r.meta.snapshot.seed || Date.now());
+        this.isPlayingBack = true; const baseDelay = 600; let t = 0;
+        this.spawnFloat(`Playing: ${r.name}`, '#fff');
+        // close replay screen and options
+        this.hideReplays();
+        this.hideOptions();    
+        // play events in sequence
+        r.events.forEach((e) => {
+            t += baseDelay;
+            setTimeout(() => {
+                const ev = e.ev;
+                switch(ev.type) {
+                    case 'play':
+                        // Prefer playing by card id (stable) if available, otherwise use beltIndex
+                        if (ev.card) {
+                            // If beltIndex points to a matching card, prefer that
+                            if (typeof ev.beltIndex === 'number' && this.belt[ev.beltIndex] === ev.card) { this.playCard(ev.beltIndex); break; }
+                            // Collect all matching indices and choose nearest to the original index if available
+                            const matches = this.belt.map((c,i) => c === ev.card ? i : -1).filter(i => i !== -1);
+                            if (matches.length > 0) {
+                                let chosen = matches[0];
+                                if (matches.length > 1 && typeof ev.beltIndex === 'number') {
+                                    chosen = matches.reduce((a,b) => (Math.abs(b - ev.beltIndex) < Math.abs(a - ev.beltIndex) ? b : a));
+                                }
+                                this.playCard(chosen); break;
+                            }
+                        }
+                        if (typeof ev.beltIndex === 'number' && ev.beltIndex >= 0 && ev.beltIndex < this.belt.length) {
+                            this.playCard(ev.beltIndex);
+                        } else {
+                            console.warn('Replay play: card not found in belt', ev);
+                        }
+                        break;
+                    case 'play_held':
+                        this.playHeldCard();
+                        break;
+                    case 'churn':
+                        this.churnBelt();
+                        break;
+                    case 'hold':
+                        // Prefer finding by card id if present
+                        if (ev.card) {
+                            // If beltIndex points to a matching card, prefer that
+                            if (typeof ev.beltIndex === 'number' && this.belt[ev.beltIndex] === ev.card) { this.moveToHold(ev.beltIndex); break; }
+                            const matches2 = this.belt.map((c,i) => c === ev.card ? i : -1).filter(i => i !== -1);
+                            if (matches2.length > 0) {
+                                let chosen2 = matches2[0];
+                                if (matches2.length > 1 && typeof ev.beltIndex === 'number') {
+                                    chosen2 = matches2.reduce((a,b) => (Math.abs(b - ev.beltIndex) < Math.abs(a - ev.beltIndex) ? b : a));
+                                }
+                                this.moveToHold(chosen2); break;
+                            }
+                        }
+                        if (typeof ev.beltIndex === 'number' && ev.beltIndex >= 0 && ev.beltIndex < this.belt.length) {
+                            this.moveToHold(ev.beltIndex);
+                        } else {
+                            console.warn('Replay hold: card not found in belt', ev);
+                        }
+                        break; 
+                    
+                    case 'buy':
+                        if (ev.relic) this.gainRelic(ev.item); else { this.deck.push(ev.item); this.updateUI(); }
+                        break;
+                    case 'gain_relic':
+                        this.gainRelic(ev.relic);
+                        break;
+                    case 'serve':
+                        this.servePotion();
+                        break;
+                    case 'start_boss':
+                        if (ev.boss) {
+                            this.bossActive = true;
+                            this.boss = ev.boss;
+                            // update UI
+                            const bossUI = document.getElementById('boss-area'); if (bossUI) bossUI.style.display = 'block';
+                            const bossName = document.getElementById('boss-name'); if (bossName) bossName.innerText = `⚠ ${this.boss.name} ⚠`;
+                            document.getElementById('c-name').innerText = this.t('boss.final_challenge');
+                            document.getElementById('c-name').parentElement.classList.add('boss-mode');
+                            document.getElementById('c-reqs').innerHTML = `<div style="text-align:center; color:#e74c3c; font-weight:bold;">${this.t('boss.defeat_text')}</div><div style="text-align:center; font-size:0.8em; color:#aaa; margin-top:5px;">Potion Strength = Damage, Boss Attacks lower your population after you attack</div>`;
+                            this.updateBossBar(); this.updateUI(); this.spawnFloat(this.t('msg.boss_fight'), "var(--danger)");
+                        }
+                        break;
+                    case 'boss_hit':
+                        // playback of a boss hit: apply damage and pop change and reset pot
+                        if (typeof ev.damage === 'number') {
+                            this.boss.hp = typeof ev.bossHp === 'number' ? ev.bossHp : Math.max(0, (this.boss.hp || 0) - ev.damage);
+                            this.updateBossBar();
+                            const bossUI2 = document.getElementById('boss-area'); if (bossUI2) { bossUI2.classList.add('shaking'); setTimeout(()=>bossUI2.classList.remove('shaking'),200); }
+                            if (ev.bossHp <= 0) {
+                                this.showResult("BOSS DEFEATED!", "The corruption has been purged.", 50 + (this.day * 10), 10);
+                            } else {
+                                if (typeof ev.popChange === 'number') { this.popularity += ev.popChange; this.spawnFloat(`${ev.popChange} POP`, "var(--danger)"); }
+                                this.spawnFloat(`Hit: ${ev.damage}`, "white");
+                                // reflect pot reset
+                                if (ev.pot) { this.pot.r = 0; this.pot.g = 0; this.pot.b = 0; }
+                                if (this.popularity <= 0) { this.shutdown(); } else { this.updateUI(); }
+                            }
+                        }
+                        break;
+                    case 'next_customer':
+                        // Playback: set the active customer and update UI
+                        if (ev.customer) {
+                            this.currentCustomer = ev.customer;
+                            this.currentCustomerIndex = typeof ev.index === 'number' ? ev.index : this.currentCustomerIndex;
+                            this.target = this.currentCustomer.target || { r:0,g:0,b:0 };
+                            this.bannedType = this.currentCustomer.bannedType || null;
+                            // update UI elements
+                            const nameEl = document.getElementById('c-name'); if (nameEl) nameEl.innerText = `${this.currentCustomer.name} (${this.currentCustomerIndex}/${this.customersPerDay})`;
+                            const reqEl = document.getElementById('c-reqs'); if (reqEl) {
+                                let html = '';
+                                if (this.target.r>0) html += `<div class="req-row"><span style="color:var(--fire)">Fire</span><span>${this.target.r}</span></div>`;
+                                if (this.target.g>0) html += `<div class="req-row"><span style="color:var(--nature)">Nature</span><span>${this.target.g}</span></div>`;
+                                if (this.target.b>0) html += `<div class="req-row"><span style="color:var(--frost)">Frost</span><span>${this.target.b}</span></div>`;
+                                reqEl.innerHTML = html;
+                            }
+                            const banEl = document.getElementById('c-ban'); if (banEl) banEl.innerText = this.bannedType ? `*Allergic to ${this.bannedType.toUpperCase()} (Keep it 0)` : "";
+                        }
+                        break;
+                    case 'next_day':
+                        this.nextDay();
+                        break;
+                }
+            }, t);
+        });
+        // End playback
+        setTimeout(() => { this.isPlayingBack = false; this.spawnFloat('Playback Complete', '#8f8'); }, t + 500);
+    }
+
     explode() {
         document.getElementById('pot-visual').classList.add('shaking');
         document.documentElement.style.setProperty('--glow-r', '255');
@@ -1078,47 +2332,47 @@ class Game {
         
         setTimeout(() => {
             document.getElementById('pot-visual').classList.remove('shaking');
-            document.getElementById('go-title').innerText = "LAB DESTROYED";
-            document.getElementById('go-msg').innerText = "Your volatile mixture exploded.";
+            document.getElementById('go-title').innerText = this.t('go.lab_destroyed');
+            document.getElementById('go-msg').innerText = this.t('go.lab_destroyed_msg');
             document.getElementById('game-over-overlay').style.display = 'flex';
         }, 1000);
     }
     
     shutdown() {
-        document.getElementById('go-title').innerText = "OUT OF BUSINESS";
-        document.getElementById('go-msg').innerText = "Your reputation is ruined. No one trusts your brews.";
+        document.getElementById('go-title').innerText = this.t('go.out_of_business');
+        document.getElementById('go-msg').innerText = this.t('go.out_of_business_msg');
         document.getElementById('game-over-overlay').style.display = 'flex';
     }
 
     servePotion() {
-        // BOSS LOGIC BRANCH
         if (this.bossActive) {
             const damage = this.pot.r + this.pot.g + this.pot.b;
             if (damage === 0) {
-                this.spawnFloat("Empty!", "white");
+                this.spawnFloat(this.t('msg.empty'), "white");
                 return;
             }
 
-            // Deal Damage
-            this.boss.hp -= damage;
-            if (this.boss.hp < 0) this.boss.hp = 0;
+            // snapshot of pot for replay
+            const potSnapshot = { r: this.pot.r, g: this.pot.g, b: this.pot.b, s: this.pot.s };
+            const newHp = Math.max(0, this.boss.hp - damage);
+            const popChange = -this.boss.dmg;
+            // record boss hit for deterministic replay
+            try { this.recordReplayEvent({ type: 'boss_hit', damage, bossHp: newHp, popChange, pot: potSnapshot }); } catch(e) {}
+
+            this.boss.hp = newHp;
             this.updateBossBar();
 
-            // Shake the boss UI
             const bossUI = document.getElementById('boss-area');
             bossUI.classList.add('shaking');
             setTimeout(()=>bossUI.classList.remove('shaking'), 200);
 
             if (this.boss.hp <= 0) {
-                // Boss Defeated
                 this.showResult("BOSS DEFEATED!", "The corruption has been purged.", 50 + (this.day * 10), 10);
             } else {
-                // Boss Attacks Back
-                this.popularity -= this.boss.dmg;
-                this.spawnFloat(`-${this.boss.dmg} POP`, "var(--danger)");
+                this.popularity += popChange; // popChange is negative
+                this.spawnFloat(`${popChange} POP`, "var(--danger)");
                 this.spawnFloat(`Hit: ${damage}`, "white");
                 
-                // Reset Pot for next attack cycle
                 this.pot.r = 0; this.pot.g = 0; this.pot.b = 0;
                 
                 if (this.popularity <= 0) {
@@ -1130,14 +2384,14 @@ class Game {
             return;
         }
 
-        // STANDARD CUSTOMER LOGIC
         const t = this.target;
         const p = this.pot;
+        const potSnapshot = { r: p.r, g: p.g, b: p.b, s: p.s };
 
-        if (p.r + p.g + p.b === 0) { this.showResult("Rejected", "You served them water. They leave in disgust.", 0, -20); return; }
-        if(this.bannedType === 'fire' && p.r > 0) { this.showResult("Allergic Reaction!", "They had a fiery reaction.", 0, -20); return; }
-        if(this.bannedType === 'nature' && p.g > 0) { this.showResult("Allergic Reaction!", "They broke out in hives.", 0, -20); return; }
-        if(this.bannedType === 'frost' && p.b > 0) { this.showResult("Allergic Reaction!", "They froze solid.", 0, -20); return; }
+        if (p.r + p.g + p.b === 0) { this.recordReplayEvent({ type: 'serve', result: 'empty', pot: potSnapshot }); this.showResult("Rejected", "You served them water. They leave in disgust.", 0, -20); return; }
+        if(this.bannedType === 'fire' && p.r > 0) { this.recordReplayEvent({ type: 'serve', result: 'allergy_fire', pot: potSnapshot }); this.showResult("Allergic Reaction!", "They had a fiery reaction.", 0, -20); return; }
+        if(this.bannedType === 'nature' && p.g > 0) { this.recordReplayEvent({ type: 'serve', result: 'allergy_nature', pot: potSnapshot }); this.showResult("Allergic Reaction!", "They broke out in hives.", 0, -20); return; }
+        if(this.bannedType === 'frost' && p.b > 0) { this.recordReplayEvent({ type: 'serve', result: 'allergy_frost', pot: potSnapshot }); this.showResult("Allergic Reaction!", "They froze solid.", 0, -20); return; }
 
         let diff = Math.abs(t.r - p.r) + Math.abs(t.g - p.g) + Math.abs(t.b - p.b);
         let reward = 0, title = "", msg = "", popChange = 0;
@@ -1147,10 +2401,21 @@ class Game {
         else if (diff <= 15) { title = "Acceptable"; msg = "It barely passes inspection."; reward = 8 + (this.day * 2); popChange = -2; } 
         else { title = "Swill"; msg = "The customer refuses to pay full price."; reward = 2; popChange = -10; }
 
+        // record serve outcome
+        try { this.recordReplayEvent({ type: 'serve', result: title, reward }); } catch(e) {}
         this.showResult(title, msg, reward, popChange);
     }
 
     showResult(title, msg, reward, popChange) {
+        // If we're playing back a replay, don't show the blocking overlay — auto-resolve instead
+        if (this.isPlayingBack) {
+            this.pendingResult = { title, reward, popChange };
+            this.spawnFloat(`${title}${reward ? ` • +${reward}g` : ''}`, '#fff');
+            // Small delay to keep playback pacing, then resolve
+            setTimeout(() => { try { this.resolveResult(); } catch(e) { console.warn('Auto-resolve failed during replay', e); } }, 120);
+            return;
+        }
+
         document.getElementById('res-title').innerText = title;
         document.getElementById('res-title').style.color = reward > 10 ? (reward > 20 ? 'var(--rare)' : 'white') : 'var(--danger)';
         document.getElementById('res-msg').innerText = msg;
@@ -1172,7 +2437,6 @@ class Game {
     resolveResult() {
         let { title, reward, popChange } = this.pendingResult;
         
-        // Golden Ladle relic
         if(this.hasRelic('golden_ladle') && (title === "Great Brew" || title === "Masterpiece!")) {
             reward += 5;
             this.spawnFloat("+5g Bonus!", "gold");
@@ -1185,31 +2449,30 @@ class Game {
         if(this.popularity <= 0) { this.shutdown(); return; }
         
         if (this.bossActive) {
-            // Boss just died
             this.bossActive = false;
             this.openShop();
         } else if(this.dailyCustomers.length === 0) {
-            // All regular customers done, trigger Boss
             this.startBossEncounter();
         } else {
-            // Next regular customer
             this.currentCustomerIndex++;
             this.nextCustomer();
         }
     }
     
     getRandomCards(pool, count) {
-        const shuffled = [...pool].sort(() => 0.5 - Math.random());
-        return shuffled.slice(0, count);
+        const arr = [...pool];
+        this.shuffleArray(arr);
+        return arr.slice(0, count);
     }
 
     openShop() {
         const shopContainer = document.getElementById('shop-main-container');
         shopContainer.innerHTML = '';
-        document.getElementById('ov-title').innerText = "Day Complete";
+        document.getElementById('ov-title').innerText = this.t('ov.day_complete');
         document.getElementById('ov-desc').innerText = `Current Gold: ${this.gold}`;
 
-        // Regular cards
+        this.renderSellSection(shopContainer);
+
         const basicChoices = this.getRandomCards(CARDS_DB.filter(c => c.shop_category === 'basic'), 4);
         this.renderShopSection(shopContainer, 'Basic Ingredients', 'Choose 2', basicChoices, 2);
 
@@ -1219,7 +2482,6 @@ class Game {
         const stabilizerChoices = this.getRandomCards(CARDS_DB.filter(c => c.shop_category === 'stabilizer'), 2);
         this.renderShopSection(shopContainer, 'Stabilizers', 'Choose 1', stabilizerChoices, 1);
 
-        // Relic shop section
         const unownedRelics = RELICS_DB.filter(r => !this.hasRelic(r.id));
         if (unownedRelics.length > 0) {
             const relicOffer = this.getRandomCards(unownedRelics, 1);
@@ -1228,6 +2490,62 @@ class Game {
         
         document.getElementById('overlay').style.display = 'flex';
         this.updateUI();
+    }
+
+    renderSellSection(container) {
+        const section = document.createElement('div');
+        section.className = 'shop-section';
+        section.style.background = 'rgba(50, 20, 20, 0.4)';
+        section.style.borderColor = '#553333';
+        section.style.flex = '1 1 100%';
+        
+        section.innerHTML = `
+            <div class="shop-section-header">
+                <h2>Sell Ingredients</h2>
+                <span style="color:#e74c3c">Clean up your deck (+10g per card)</span>
+            </div>
+            <div class="shop-card-grid" id="sell-grid" style="max-height: 200px; overflow-y: auto; padding: 10px;"></div>
+        `;
+        
+        const grid = section.querySelector('#sell-grid');
+        
+        const sortedDeckIndices = this.deck.map((id, index) => ({id, index})).sort((a,b) => a.id.localeCompare(b.id));
+
+        sortedDeckIndices.forEach(item => {
+            const cardData = CARDS_DB.find(c => c.id === item.id);
+            const el = this.createHandCardElement(cardData);
+            el.className += ' shop-card';
+            el.style.width = '100px'; 
+            el.style.height = '140px';
+            el.style.cursor = 'pointer';
+            
+            const sellOverlay = document.createElement('div');
+            sellOverlay.style.position = 'absolute'; sellOverlay.style.inset = '0';
+            sellOverlay.style.background = 'rgba(0,0,0,0.5)';
+            sellOverlay.style.display = 'flex'; sellOverlay.style.alignItems='center';
+            sellOverlay.style.justifyContent='center';
+            sellOverlay.style.opacity = '0'; sellOverlay.style.transition = '0.2s';
+            sellOverlay.style.borderRadius = '8px';
+            sellOverlay.innerHTML = '<span style="color:red; font-weight:bold; background:black; padding:2px 5px;">SELL</span>';
+            
+            el.appendChild(sellOverlay);
+            
+            el.onmouseenter = () => { sellOverlay.style.opacity = '1'; el.style.transform = 'scale(1.05)'; };
+            el.onmouseleave = () => { sellOverlay.style.opacity = '0'; el.style.transform = 'scale(1)'; };
+            
+            el.onclick = () => {
+                const realIndex = this.deck.indexOf(item.id);
+                if (realIndex > -1) {
+                    this.deck.splice(realIndex, 1);
+                    this.gold += 10;
+                    document.getElementById('ov-desc').innerText = `Current Gold: ${this.gold}`;
+                    this.openShop();
+                }
+            };
+            grid.appendChild(el);
+        });
+        
+        container.appendChild(section);
     }
     
     renderShopSection(container, title, instruction, itemPool, maxChoices, areRelics = false) {
@@ -1245,7 +2563,7 @@ class Game {
 
         itemPool.forEach(item => {
             if (!areRelics) {
-                item.price = (item.rarity === 'epic' ? 50 : (item.rarity === 'rare' ? 35 : 15)) + Math.floor(Math.random()*10);
+                item.price = (item.rarity === 'epic' ? 50 : (item.rarity === 'rare' ? 35 : 15)) + Math.floor(this.random()*10);
             }
             if(this.hasRelic('merchants_coin')) {
                 item.price = Math.floor(item.price * 0.8);
@@ -1256,6 +2574,8 @@ class Game {
                 if (el.classList.contains('chosen') || section.classList.contains('locked') || this.gold < item.price) return;
                 
                 this.gold -= item.price;
+                // record purchase
+                try { this.recordReplayEvent({ type: 'buy', item: item.id, price: item.price, relic: !!areRelics }); } catch(e) {}
                 if(areRelics) {
                     this.gainRelic(item.id);
                 } else {
@@ -1280,8 +2600,8 @@ class Game {
     gainRelic(relicId) {
         if (this.hasRelic(relicId)) return;
         this.relics.push(relicId);
+        try { this.recordReplayEvent({ type: 'gain_relic', relic: relicId }); } catch(e) {}
         this.renderRelics();
-        this.updateRecycleButtonText();
         this.updateUI();
     }
 
@@ -1309,7 +2629,7 @@ class Game {
         }
     }
 
-    nextDay() { this.day++; this.startDay(); }
+    nextDay() { this.recordReplayEvent({ type: 'next_day', nextDay: this.day + 1 }); this.day++; this.startDay(); }
 
     updateUI() {
         document.getElementById('ui-day').innerText = this.day;
@@ -1317,6 +2637,11 @@ class Game {
         document.getElementById('ui-cust').innerText = this.bossActive ? "BOSS" : `${this.currentCustomerIndex}/${this.customersPerDay}`;
         document.getElementById('ui-gold').innerText = this.gold;
         document.getElementById('ui-deck-count').innerText = this.deck.length;
+        document.getElementById('draw-pile-count').innerText = this.drawPile.length;
+
+        const isFreeChurn = this.hasRelic('tome_of_plenty');
+        document.getElementById('churn-cost-text').innerText = isFreeChurn ? "FREE" : "-1 STAB";
+        document.getElementById('churn-cost-text').style.color = isFreeChurn ? "var(--stab)" : "#aaa";
 
         const max = Math.max(30, this.pot.r, this.pot.g, this.pot.b, this.target ? Math.max(this.target.r, this.target.g, this.target.b) : 0);
         document.getElementById('bar-r').style.width = (this.pot.r / max * 100) + '%';
@@ -1345,40 +2670,533 @@ class Game {
         const root = document.documentElement.style;
         root.setProperty('--glow-r', r); root.setProperty('--glow-g', g); root.setProperty('--glow-b', b);
         root.setProperty('--liquid-height', heightPct + '%');
-        
-        document.getElementById('cauldron-area').style.textShadow = (tot > 5) ? `0 0 10px rgba(${r},${g},${b}, 0.5)` : 'none';
     }
 
-    renderHand() {
-        const c = document.getElementById('hand-container');
+    renderBelt(animateEntry = false) {
+        const c = document.getElementById('belt-track');
         c.innerHTML = '';
 
-        if (this.options.stackHand) {
-            const counts = {};
-            this.hand.forEach(id => { counts[id] = (counts[id] || 0) + 1; });
-            const uniqueIds = Object.keys(counts).sort();
+        this.belt.forEach((cid, i) => {
+            const card = CARDS_DB.find(x => x.id === cid);
+            const el = this.createHandCardElement(card);
 
-            uniqueIds.forEach(cid => {
-                const card = CARDS_DB.find(x => x.id === cid);
-                const el = this.createHandCardElement(card);
-                if (counts[cid] > 1) { el.innerHTML += `<div class="card-count">x${counts[cid]}</div>`; }
-                el.onclick = () => this.playCard(cid); 
+            el.onclick = () => {
+                if (this.isAnimatingBelt) return;
+                this.playCard(i);
+            };
+            const btn = el.querySelector('.btn-hold');
+            if(btn) {
+                btn.onclick = (e) => {
+                    if (this.isAnimatingBelt) return;
+                    e.stopPropagation();
+                    this.moveToHold(i);
+                };
+            }
+
+            // If this is the last card (newly added) AND we want animation
+            if (animateEntry && i === this.belt.length - 1) {
+                // Hide immediately to avoid pre-animation flicker
+                el.style.opacity = '0';
+                el.style.visibility = 'hidden';
                 c.appendChild(el);
-            });
-        } else {
-            this.hand.forEach((cid, i) => {
-                const card = CARDS_DB.find(x => x.id === cid);
-                const el = this.createHandCardElement(card);
-                if(this.nextCardFree) el.style.border = "2px solid gold";
-                el.onclick = () => this.playCard(i); 
+
+                try {
+                    const deck = document.getElementById('deck-stack');
+                    const deckRect = deck.getBoundingClientRect();
+                    const elRect = el.getBoundingClientRect();
+
+                    const startX = deckRect.left + deckRect.width / 2;
+                    const startY = deckRect.top + deckRect.height / 2;
+                    const endX = elRect.left + elRect.width / 2;
+                    const endY = elRect.top + elRect.height / 2;
+
+                    const typeCols = { fire: '#ff4d4d', nature: '#2ecc71', frost: '#3498db', void: '#9b59b6' };
+
+                    // Create SVG wire
+                    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                    svg.setAttribute('class', 'wire-svg');
+                    svg.setAttribute('width', document.body.clientWidth);
+                    svg.setAttribute('height', document.body.clientHeight);
+                    svg.style.position = 'absolute';
+                    svg.style.left = '0'; svg.style.top = '0';
+
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', startX); line.setAttribute('y1', startY);
+                    line.setAttribute('x2', startX); line.setAttribute('y2', startY);
+                    line.setAttribute('stroke', typeCols[card.type] || '#fff');
+                    line.setAttribute('class', 'wire-line');
+                    svg.appendChild(line);
+                    document.body.appendChild(svg);
+
+                    const len = Math.hypot(endX - startX, endY - startY);
+                    line.style.strokeDasharray = len;
+                    line.style.strokeDashoffset = len;
+
+                    // Draw the wire
+                    line.animate([
+                        { strokeDashoffset: len },
+                        { strokeDashoffset: 0 }
+                    ], { duration: 260, easing: 'cubic-bezier(.22,1,.36,1)' });
+
+                    // Prepare card to appear (small, rotated, invisible) - make it visible only when moving
+                    el.style.transition = 'transform 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease';
+                    el.style.transform = `translate(${startX - endX}px, ${startY - endY}px) scale(0.6) rotate(-10deg)`;
+                    // Ensure it remains hidden until particles start
+
+                    // After wire draws, emit particles that travel along the same vector
+                    setTimeout(() => {
+                        // Reveal the card and allow it to animate into place
+                        el.style.visibility = 'visible';
+
+                        const particles = [];
+                        const steps = 10;
+                        for (let p = 0; p < steps; p++) {
+                            const dot = document.createElement('div');
+                            dot.className = 'draw-particle';
+                            dot.style.left = startX + 'px';
+                            dot.style.top = startY + 'px';
+                            dot.style.background = typeCols[card.type] || '#fff';
+                            document.body.appendChild(dot);
+
+                            const delay = p * 35;
+                            const anim = dot.animate([
+                                { transform: 'translate(0px, 0px) scale(1)', opacity: 1 },
+                                { transform: `translate(${endX - startX}px, ${endY - startY}px) scale(0.2)`, opacity: 0 }
+                            ], { duration: 420, delay, easing: 'cubic-bezier(.22,1,.36,1)' });
+
+                            // cleanup after
+                            setTimeout(() => { try { dot.remove(); } catch (e) {} }, 500 + delay);
+                        }
+
+                        // Morph into card: reveal card slightly after first particles
+                        setTimeout(() => {
+                            el.style.transform = '';
+                            el.style.opacity = '1';
+                            el.classList.add('entry-glow'); el.classList.add('entry-pop');
+                            setTimeout(() => { el.classList.remove('entry-glow'); el.classList.remove('entry-pop'); }, 520);
+                        }, 160);
+
+                        // wire flash and cleanup
+                        line.classList.add('wire-flash');
+                        setTimeout(() => { try { svg.remove(); } catch (e) {} }, 800);
+                    }, 260);
+                } catch (e) {
+                    // fallback to simple slide
+                    el.style.transform = 'translateX(0)';
+                    el.style.opacity = '1';
+                    el.style.visibility = 'visible';
+                }
+            } else {
+                // Not the animated one: just append normally
                 c.appendChild(el);
-            });
-        }
+            }
+        });
     }
 }
 
+// Language helper (defined after the class)
+Game.prototype.setLanguage = function(lang) {
+    this.language = lang;
+    localStorage.setItem('va_lang', lang);
+    const T = {
+        en: {
+            'guide.basics.caption': 'Customer order example: the ticket lists required Fire/Nature/Frost — aim to match these values closely.',
+            'guide.basics.body': `
+                <p><strong>3 simple steps:</strong></p>
+                <ol>
+                    <li><strong>Inspect order:</strong> Read the customer's ticket and note any bans (allergies). Check the sizes before playing.</li>
+                    <li><strong>Build potion:</strong> Use cards to increase the required stats while keeping an eye on Stability. Prefer small increments early, big plays later.</li>
+                    <li><strong>Serve & compare:</strong> When the sum matches closely (diff ≤1), serve for a Masterpiece. Otherwise consider small adjustments or accept the loss strategically.</li>
+                </ol>
+                <p><strong>Extended example:</strong> If a ticket wants Fire 3, Nature 2 and bans Frost, plan two medium Fire plays and a small Nature play instead of a single big Fire burst—this preserves Stab and gives room to correct later.</p>
+                <p><strong>Practical tips:</strong> Keep one stabilizer in the deck early, and avoid playing cards of banned types. Use the small Pocket trick (pin your finisher) to delay until the perfect turn.</p>
+            `,
+            'btn.start': 'Start Brewing',
+            'btn.serve': 'SERVE POTION',
+            'ui.help': 'Help',
+            'ui.options': 'Options',
+            'ui.day': 'Day',
+            'ui.pop': 'Pop',
+            'ui.cust': 'Cust',
+            'ui.gold': 'Gold',
+            'ui.deck': 'Deck',
+            'btn.attack': 'ATTACK BOSS',
+            'boss.final_challenge': 'FINAL CHALLENGE',
+            'boss.defeat_text': 'DEFEAT THE ENTITY',
+            'go.lab_destroyed': 'LAB DESTROYED',
+            'go.lab_destroyed_msg': 'Your volatile mixture exploded.',
+            'go.out_of_business': 'OUT OF BUSINESS',
+            'go.out_of_business_msg': 'Your reputation is ruined. No one trusts your brews.',
+            'ov.day_complete': 'Day Complete',
+            'ui.view_deck': 'View Deck',
+            'guide.header.basics': 'Basics',
+            'guide.header.conveyor': 'Conveyor & Flow',
+            'guide.caption.conveyor': 'Leftmost = oldest. Use churn to discard bad early cards, but plan for the resulting shift.',
+            'guide.conveyor.body': `
+                <p>The belt shows up to 5 draw slots from left-to-right. Playing or removing a card shifts the remaining cards left and draws a new card to the right. Understanding shift patterns helps you set up combos.</p>
+                <ul>
+                    <li><strong>Churn:</strong> Discards the leftmost card. Costs -1 Stab unless you own the <em>Tome of Plenty</em>. Use it to avoid catastrophic draws but don't abuse it.</li>
+                    <li><strong>Pocket (Pin):</strong> Hold one card aside to protect it from churn and shifting. Great for saving a combo piece or expensive card for later.</li>
+                    <li><strong>Timing:</strong> If you need a specific sequence, sometimes it's better to churn once or twice to align the belt rather than waste Stab correcting mistakes.</li>
+                </ul>
+                <p><strong>Example:</strong> If the next three cards are weak but the 4th is key for your combo, churn twice to bring it into the play window.</p>
+                <p><strong>Pro tip:</strong> Small, deliberate churns early are safer than desperate fixes later—plan the belt two turns ahead whenever possible.</p>
+            `,
+            'guide.header.cauldron': 'Cauldron & Stability',
+            'guide.caption.cauldron': 'Stability is the lab\'s lifeline—spend it wisely and keep a safety margin.',
+            'guide.cauldron.body': `
+                <p>The cauldron tracks three stats (Fire, Nature, Frost) and Stability (Stab). Most cards change stats and many affect Stab positively or negatively.</p>
+                <ul>
+                    <li><strong>Stab basics:</strong> Stab is consumed by many cards. If it reaches 0 you explode (game over). Keep at least a small buffer for emergency stabilizers.</li>
+                    <li><strong>Recovering Stab:</strong> Use stabilizers like <em>Salt</em>, plan small plays early, or buy relics/upgrades that boost Stab.</li>
+                    <li><strong>Max Stab:</strong> Some relics temporarily increase your max Stab for the day—this allows bigger plays safely.</li>
+                </ul>
+                <p><strong>Decision rule:</strong> If a play would drop Stab dangerously low, consider pocketing a card or using a small stabilizer instead of the risky play.</p>
+                <p><strong>Warning:</strong> Some customer effects or boss attacks can penalize Stab mid-turn—anticipate these and avoid risky plays on those turns.</p>
+            `,
+            'guide.header.cards': 'Cards & Deck',
+            'guide.caption.cards': 'Think in archetypes (stabilize, burst, or conversion). Build your deck around a goal.',
+            'guide.cards.body': `
+                <p>Cards belong to types (Fire/Nature/Frost/Void), have rarities, and can grant or cost Stab. Understanding each card's role is key to consistent play.</p>
+                <ul>
+                    <li><strong>Void cards:</strong> Offer powerful effects (set, convert, double) but often consume Stab—time them for maximum impact.</li>
+                    <li><strong>Combos:</strong> Chain cards that reference Last-Played Type for synergy. Example: play two Fire cards to stack bonuses and then a Fire-doubling card.</li>
+                    <li><strong>Deck management:</strong> Trim weak duplicates in the shop and favor cards that support your chosen archetype. Pocket helps protect combo pieces until needed.</li>
+                </ul>
+                <p><strong>Example:</strong> A Fire-focused deck benefits from cards that add Fire, double Fire, and a stabilizer to sustain long turns. Avoid mixing too many conflicting mechanics early.</p>
+                <p><strong>Sample combo:</strong> Aim to sequence a small add, a conversion to the desired type, then a multiplier—this reduces variance while delivering a strong turn.</p>
+            `,
+            'guide.header.shop': 'Shop & Relics',
+            'guide.caption.shop': 'Relics are permanent boosts; plan purchases around your deck needs.',
+            'guide.shop.body': `
+                <p>After the day's customers you can buy cards, relics, or sell duplicates. Spend gold to shore up weaknesses or double down on a winning strategy.</p>
+                <ul>
+                    <li><strong>Relics:</strong> Unique upgrades that change gameplay - e.g., <em>Reinforced Beaker</em> (+max Stab) and <em>Crystal Shuffler</em> (automatically draws up to 2 cards on shuffle).</li>
+                    <li><strong>Reroll:</strong> Use rerolls to replace poor shop pools when you need a specific stabilizer or combo piece. Cost vs reward is key.</li>
+                    <li><strong>Sell vs Keep:</strong> Sell excess basics to finance important relics early; later you can rebuild the deck with higher-tier cards.</li>
+                </ul>
+                <p><strong>Purchase tip:</strong> If you're fragile on Stab, prioritize relics or stabilizers rather than high-cost damage cards.</p>
+                <p><strong>Reroll guidance:</strong> Only reroll when you have a clear gap in your deck (missing stabilizer or a finisher); blind rerolls early are usually a net loss.</p>
+            `,
+            'guide.header.boss': 'Boss Combat',
+            'guide.caption.boss': 'Bosses ignore customer rules — your potion strength equals damage to the boss.',
+            'guide.boss.body': `
+                <p>Boss fights use your potion totals (Fire+Nature+Frost) as damage. They are like one giant customer: prepare and strike hard.</p>
+                <ul>
+                    <li><strong>Save combos:</strong> Reserve cards and combos for bosses — these encounters reward burst damage.</li>
+                    <li><strong>Stab management:</strong> Maintain a healthy Stab buffer; a single misplay before the boss can ruin your run.</li>
+                    <li><strong>Plan shop purchases:</strong> If you expect a tough boss, buy stabilizers or relics that grant reliable survivability.</li>
+                </ul>
+                <p><strong>Advanced tip:</strong> If you have Crystal Shuffler, plan to trigger shuffles around expected draws — extra cards on shuffle can find combo pieces.</p>
+                <p><strong>Boss example:</strong> Against bosses that punish low Stab, consider slow-building the potion across turns and using a few guaranteed finishers rather than an all-in burst that risks explosion.</p>
+            `,
+            'guide.header.advanced': 'Advanced Combos',
+            'guide.caption.advanced': 'Set up sequences that exploit Last-Played and on-play triggers to amplify effects.',
+            'guide.advanced.body': `
+                <p><strong>Key ideas:</strong></p>
+                <ul>
+                    <li><strong>Sequence first:</strong> Play low-cost setup cards to enable a high-value finisher on the same turn.</li>
+                    <li><strong>Preserve pieces:</strong> Use Pocket to protect critical combo cards from churn and accidental plays.</li>
+                    <li><strong>Timing:</strong> Sometimes it's better to hold a piece one turn to synchronize with a draw or relic trigger.</li>
+                </ul>
+                <p><strong>Combo practice:</strong> Try short runs focusing only on building one 3-card combo to get a feel for timing and belt manipulation; you'll quickly learn the realistic success rate for your deck.</p>
+            `,
+            'guide.header.deck': 'Deckbuilding',
+            'guide.caption.deck': 'A lean, synergistic deck wins more consistently than a bloated one.',
+            'guide.deck.body': `
+                <p><strong>Rules of thumb:</strong></p>
+                <ul>
+                    <li>Prefer 1–2 archetypes: mixing too many weak synergies dilutes consistency.</li>
+                    <li>Sell or scrap weak duplicates in the shop to fund relics or stabilizers.</li>
+                    <li>Add a couple of defensive / stabilizing cards to keep options open during variance.</li>
+                </ul>
+                <p><strong>Actionable tip:</strong> After 5–7 runs you should identify which card pairs consistently help each other—favor pairs when shopping or rerolling to accelerate synergy.</p>
+            `,
+            'guide.header.relics': 'Relic Interactions',
+            'guide.caption.relics': 'Relics change rules—read them closely and plan purchases to work with your deck.',
+            'guide.relics.body': `
+                <p><strong>Examples:</strong></p>
+                <ul>
+                    <li><strong>Crystal Shuffler:</strong> Use shuffles to fish for missing combo pieces; avoid wasting churn right before a shuffle.</li>
+                    <li><strong>Beaker & Stab boosts:</strong> If you gain max Stab, you can include higher-cost cards safely.</li>
+                    <li><strong>Synergies:</strong> Some relics boost a specific type (Fire/Nature/Frost) — leaning into that type pays off.</li>
+                </ul>
+                <p><strong>Scaling advice:</strong> If a relic boosts a mechanic you already lean into, it usually provides better long-term value than a one-off gold or stat buff—plan purchases around your deck identity.</p>
+            `,
+            'guide.header.daily': 'Daily Strategy',
+            'guide.caption.daily': 'Balance short-term survival with long-term upgrades—don\'t overspend early on flashy cards.',
+            'guide.daily.body': `
+                <p><strong>Plan:</strong></p>
+                <ul>
+                    <li>Spend early gold conservative to ensure survivability; prioritize relics that shore up weaknesses.</li>
+                    <li>Use rerolls sparingly—only when you need a specific stabilizer or combo enabler.</li>
+                    <li>Keep an emergency fund for critical shop options at day-end.</li>
+                </ul>
+
+                <p><strong>Deep dive:</strong> On early days, buy what helps your deck's consistency (stabilizers, single-target converters). Mid-game, pivot to relics or stabilizers that unlock higher-variance wins; late-game, look for multiplicative relics and finishers that exploit your established engine.</p>
+                <p><strong>Example:</strong> If you are stabilizer-starved, buy one stabilizer early and focus on low-risk plays for the next day—this increases your chance to survive long enough to buy a key relic later. If you have a clear deck identity (e.g., Fire-focus), invest early in cards and relics that compound that identity rather than buying small, unrelated upgrades.</p>
+            `,
+            'help.nav.guides': '📚 Guides',
+            'help.nav.tips': '💡 Tips',
+            'help.nav.shortcuts': '⌨️ Shortcuts',
+            'help.search': 'Search guides & tips...',
+            'help.expand_all': 'Expand All',
+            'help.collapse_all': 'Collapse All',
+            'shortcut.h': 'H or ? — Open/close Help',
+            'shortcut.esc': 'Esc — Close current overlay',
+            'shortcut.click_card': 'Click card — Play it',
+            'shortcut.pin_icon': 'Pin icon — Move to Pocket',
+            'btn.close': 'Close',
+            'btn.close_view': 'Close View',
+            'tip.1': '📌 Pocket one clutch card to protect a combo.',
+            'tip.2': '🚮 Churn to remove early bad cards, but don\'t run your Stab too low.',
+            'tip.3': '⚖️ Aim for difference ≤1 to get \'Masterpiece\' rewards.',
+            'tip.4': '🧂 Stabilizers are great late-game to keep your pot healthy.',
+            'tip.5': '🪙 Sell duplicate basics in the shop for quick gold between days.',
+            'tip.6': '🔥 Save high-value fire/nature/frost sets for boss to maximize damage.',
+            'tip.7': '🔁 If a relic makes churn free, you can be more aggressive with skipping.',
+            'tip.8': '💡 Watch the floating hints — they often tell you when a combo triggers.',
+            'btn.next_day': 'Next Day',
+            'msg.boss_fight': 'BOSS FIGHT!',
+            'msg.day_complete': 'Day Complete',
+            'msg.empty': 'Empty!',
+            'msg.reborn': 'Reborn!',
+            'msg.powered': 'Powered!',
+            'msg.combo': 'Combo!',
+            'msg.not_enough_stab': 'Not enough stability!',
+            'msg.pocket_full': 'Pocket Full!',
+            'msg.free': 'Free!',
+            'msg.need_stab': 'Need 1 Stab!',
+            'msg.free_churn': 'Free Churn',
+            'label.stability': 'STABILITY',
+            'label.pocket': 'POCKET',
+            'label.up_next': 'Up Next'
+        },
+        es: {
+            'guide.basics.caption': 'Ejemplo de pedido: el ticket muestra Fire/Nature/Frost requeridos — intenta igualar estos valores lo más cerca posible.',
+            'guide.basics.body': `
+                <p><strong>3 pasos simples:</strong></p>
+                <ol>
+                    <li><strong>Inspecciona el pedido:</strong> Lee el ticket y nota alergias o prohibiciones. Revisa los tamaños antes de jugar.</li>
+                    <li><strong>Prepara la poción:</strong> Usa cartas para aumentar las estadísticas requeridas mientras controlas la Estabilidad. Prefiere incrementos pequeños al principio y jugadas grandes más tarde.</li>
+                    <li><strong>Sirve y compara:</strong> Cuando la suma coincida (diferencia ≤1), sirve para una Obra Maestra. Si no, considera ajustes pequeños o acepta la pérdida estratégicamente.</li>
+                </ol>
+                <p><strong>Ejemplo extendido:</strong> Si el pedido pide Fire 3, Nature 2 y prohíbe Frost, planifica dos jugadas medianas de Fire y una pequeña de Nature en vez de un gran estallido de Fire—esto preserva Estabilidad y deja margen para corregir.</p>
+                <p><strong>Consejos prácticos:</strong> Mantén un estabilizador en el mazo temprano y evita jugar tipos prohibidos. Usa la función Pocket para proteger tu finalizador hasta el momento perfecto.</p>
+            `,
+            'btn.start': 'Comenzar a Cocinar',
+            'btn.serve': 'SERVIR POCIÓN',
+            'ui.help': 'Ayuda',
+            'ui.options': 'Opciones',
+            'ui.day': 'Día',
+            'ui.pop': 'Pop',
+            'ui.cust': 'Clientes',
+            'ui.gold': 'Oro',
+            'ui.deck': 'Mazo',
+            'btn.attack': 'ATACAR JEFE',
+            'boss.final_challenge': 'DESAFÍO FINAL',
+            'boss.defeat_text': 'DERROTA A LA ENTIDAD',
+            'go.lab_destroyed': 'LABORATORIO DESTRUIDO',
+            'go.lab_destroyed_msg': 'Tu mezcla volátil explotó.',
+            'go.out_of_business': 'FUERA DEL NEGOCIO',
+            'go.out_of_business_msg': 'Tu reputación está arruinada. Nadie confía en tus pociones.',
+            'ov.day_complete': 'Día completado',
+            'ui.view_deck': 'Ver Mazo',
+            'guide.header.basics': 'Básicos',
+            'guide.header.conveyor': 'Cinta y Flujo',
+            'guide.caption.conveyor': 'El extremo izquierdo es el más antiguo. Usa churn para descartar cartas malas, pero planifica el desplazamiento resultante.',
+            'guide.conveyor.body': `
+                <p>La cinta muestra hasta 5 ranuras de robo de izquierda a derecha. Jugar o eliminar una carta desplaza las restantes a la izquierda y roba una nueva carta a la derecha. Entender los patrones de desplazamiento te ayuda a configurar combos.</p>
+                <ul>
+                    <li><strong>Churn:</strong> Descarta la carta más a la izquierda. Cuesta -1 Estab a menos que poseas el <em>Tome of Plenty</em>. Úsalo para evitar robos catastróficos, pero no abuses.</li>
+                    <li><strong>Pocket (Pin):</strong> Mantén una carta a un lado para protegerla del churn y el desplazamiento. Excelente para guardar una pieza de combo o una carta cara.</li>
+                    <li><strong>Timing:</strong> Si necesitas una secuencia específica, a veces es mejor churnear una o dos veces para alinear la cinta en lugar de gastar Estab corrigiendo errores.</li>
+                </ul>
+                <p><strong>Ejemplo:</strong> Si las próximas tres cartas son débiles pero la 4ª es clave para tu combo, churnea dos veces para traerla a la ventana de juego.</p>
+                <p><strong>Consejo útil:</strong> Pequeños churns deliberados al principio son más seguros que arreglos desesperados más tarde—planea la cinta dos turnos por delante cuando sea posible.</p>
+            `,
+            'guide.header.cauldron': 'Caldero y Estabilidad',
+            'guide.caption.cauldron': 'La Estabilidad es el sostén del laboratorio—úsala con cuidado y guarda un margen de seguridad.',
+            'guide.cauldron.body': `
+                <p>El caldero rastrea tres estadísticas (Fire, Nature, Frost) y Estabilidad (Estab). La mayoría de las cartas cambian estadísticas y muchas afectan Estab positiva o negativamente.</p>
+                <ul>
+                    <li><strong>Básicos de Estab:</strong> Estab se consume con muchas cartas. Si llega a 0 explotas (game over). Mantén al menos un pequeño margen para estabilizadores de emergencia.</li>
+                    <li><strong>Recuperar Estab:</strong> Usa estabilizadores como <em>Salt</em>, planifica jugadas pequeñas temprano o compra reliquias/mejoras que aumenten Estab.</li>
+                    <li><strong>Max Estab:</strong> Algunas reliquias aumentan temporalmente tu Estab máximo por el día—esto permite jugadas de mayor coste con seguridad.</li>
+                </ul>
+                <p><strong>Regla de decisión:</strong> Si una jugada bajaría Estab peligrosamente, considera poner una carta en Pocket o usar un pequeño estabilizador en lugar de la jugada arriesgada.</p>
+                <p><strong>Advertencia:</strong> Algunos efectos de clientes o ataques de jefe pueden penalizar Estab en medio del turno—anticípalo y evita jugadas arriesgadas en esos turnos.</p>
+            `,
+            'guide.header.cards': 'Cartas y Mazo',
+            'guide.caption.cards': 'Piensa en arquetipos (estabilizar, explosión, conversión). Construye tu mazo en torno a un objetivo.',
+            'guide.cards.body': `
+                <p>Las cartas pertenecen a tipos (Fire/Nature/Frost/Void), tienen rarezas y pueden otorgar o costar Estabilidad. Entender el papel de cada carta es clave para un juego consistente.</p>
+                <ul>
+                    <li><strong>Cartas Void:</strong> Ofrecen efectos potentes (set, convertir, duplicar) pero suelen consumir Estabilidad—úsalas en el momento adecuado.</li>
+                    <li><strong>Combos:</strong> Encadena cartas que referencian el Tipo Último Jugado para sinergia. Ejemplo: juega dos cartas Fire para apilar bonos y luego una carta que duplica Fire.</li>
+                    <li><strong>Gestión de mazo:</strong> Recorta duplicados débiles en la tienda y favorece cartas que apoyen tu arquetipo elegido. Pocket protege piezas de combo hasta que las necesites.</li>
+                </ul>
+                <p><strong>Ejemplo:</strong> Un mazo enfocado en Fire se beneficia de cartas que añaden Fire, duplican Fire y un estabilizador para sostener turnos largos. Evita mezclar demasiadas mecánicas en conflicto temprano.</p>
+                <p><strong>Combo de muestra:</strong> Intenta secuenciar un pequeño añadido, una conversión al tipo deseado y luego un multiplicador—esto reduce la varianza mientras se consigue un turno potente.</p>
+            `,
+            'guide.header.shop': 'Tienda y Reliquias',
+            'guide.caption.shop': 'Las reliquias son mejoras permanentes; planifica compras según las necesidades de tu mazo.',
+            'guide.shop.body': `
+                <p>Después de los clientes del día puedes comprar cartas, reliquias o vender duplicados. Gasta oro para cubrir debilidades o duplicar una estrategia ganadora.</p>
+                <ul>
+                    <li><strong>Reliquias:</strong> Mejoras únicas que cambian la jugabilidad - por ejemplo, <em>Reinforced Beaker</em> (+max Estabilidad) y <em>Crystal Shuffler</em> (extrae hasta 2 cartas en el shuffle).</li>
+                    <li><strong>Reroll:</strong> Usa rerolls para reemplazar pools pobres cuando necesites un estabilizador o pieza de combo específica. Costo vs beneficio es clave.</li>
+                    <li><strong>Vender vs Conservar:</strong> Vende básicos excedentes para financiar reliquias importantes temprano; más tarde puedes reconstruir el mazo con cartas de mayor nivel.</li>
+                </ul>
+                <p><strong>Consejo de compra:</strong> Si eres frágil en Estab, prioriza reliquias o estabilizadores en lugar de cartas de alto coste.</p>
+                <p><strong>Guía de reroll:</strong> Haz reroll solo cuando tengas una brecha clara en tu mazo; los rerolls a ciegas suelen ser una pérdida neta temprano.</p>
+            `,
+            'guide.header.boss': 'Combate contra Jefes',
+            'guide.caption.boss': 'Los jefes ignoran las reglas de clientes — la fuerza de tu poción es el daño al jefe.',
+            'guide.boss.body': `
+                <p>Las peleas contra jefes usan tus totales de poción (Fire+Nature+Frost) como daño. Son como un cliente gigante: prepárate y ataca con fuerza.</p>
+                <ul>
+                    <li><strong>Guarda combos:</strong> Reserva cartas y combos para jefes — estas batallas premian el daño explosivo.</li>
+                    <li><strong>Gestión de Estab:</strong> Mantén un colchón saludable de Estab; un solo error antes del jefe puede arruinar tu run.</li>
+                    <li><strong>Planea compras:</strong> Si esperas un jefe duro, compra estabilizadores o reliquias que otorguen supervivencia confiable.</li>
+                </ul>
+                <p><strong>Consejo avanzado:</strong> Si tienes Crystal Shuffler, planea activar shuffles alrededor de las cartas esperadas — cartas extra en el shuffle pueden encontrar piezas de combo.</p>
+                <p><strong>Ejemplo de jefe:</strong> Contra jefes que castigan la Estab baja, considera construir la poción lentamente y usar algunos finalizadores garantizados en lugar de un todo por todo arriesgado.</p>
+            `,
+            'guide.header.advanced': 'Combos Avanzados',
+            'guide.caption.advanced': 'Configura secuencias que exploten Last-Played y triggers de juego para amplificar efectos.',
+            'guide.advanced.body': `
+                <p><strong>Ideas clave:</strong></p>
+                <ul>
+                    <li><strong>Secuencia primero:</strong> Juega cartas de configuración de bajo coste para habilitar un finisher de alto valor en el mismo turno.</li>
+                    <li><strong>Preserva piezas:</strong> Usa Pocket para proteger cartas de combo críticas del churn y de jugadas accidentales.</li>
+                    <li><strong>Timing:</strong> A veces es mejor mantener una pieza un turno para sincronizarla con un draw o un disparador de reliquia.</li>
+                </ul>
+                <p><strong>Práctica de combos:</strong> Prueba runs cortos enfocándote solo en construir un combo de 3 cartas para aprender el timing y la manipulación del belt; así conocerás la tasa realista de éxito para tu mazo.</p>
+            `,
+            'guide.header.deck': 'Construcción de Mazo',
+            'guide.caption.deck': 'Un mazo sin grasa y sinérgico gana con más consistencia que uno hinchado.',
+            'guide.deck.body': `
+                <p><strong>Reglas generales:</strong></p>
+                <ul>
+                    <li>Prefiere 1–2 arquetipos: mezclar demasiadas sinergias débiles diluye la consistencia.</li>
+                    <li>Vende o descarta duplicados débiles en la tienda para financiar reliquias o estabilizadores.</li>
+                    <li>Añade un par de cartas defensivas/estabilizadoras para mantener opciones durante la varianza.</li>
+                </ul>
+                <p><strong>Consejo accionable:</strong> Tras 5–7 runs deberías identificar parejas de cartas que se ayudan entre sí—favorece pares al comprar o hacer reroll para acelerar la sinergia.</p>
+            `,
+            'guide.header.relics': 'Interacciones de Reliquias',
+            'guide.caption.relics': 'Las reliquias cambian las reglas—léelas y planea compras que trabajen con tu mazo.',
+            'guide.relics.body': `
+                <p><strong>Ejemplos:</strong></p>
+                <ul>
+                    <li><strong>Crystal Shuffler:</strong> Usa los shuffles para buscar piezas de combo; evita usar churn justo antes de un shuffle.</li>
+                    <li><strong>Beaker y boosts de Estab:</strong> Si aumentas el max de Estab, puedes incluir cartas de mayor coste de forma segura.</li>
+                    <li><strong>Sinergias:</strong> Algunas reliquias potencian un tipo específico (Fire/Nature/Frost)—apostar por ese tipo suele dar buenos resultados.</li>
+                </ul>
+                <p><strong>Consejo de escala:</strong> Si una reliquia potencia una mecánica que ya usas, suele generar más valor que un simple oro o buff puntual—planea compras según la identidad de tu mazo.</p>
+            `,
+            'guide.header.daily': 'Estrategia Diaria',
+            'guide.caption.daily': 'Equilibra la supervivencia a corto plazo con mejoras a largo plazo—no gastes en exceso temprano en cartas llamativas.',
+            'guide.daily.body': `
+                <p><strong>Plan:</strong></p>
+                <ul>
+                    <li>Gasta oro temprano con conservadurismo para asegurar supervivencia; prioriza reliquias que cubran debilidades.</li>
+                    <li>Usa rerolls con moderación—solo cuando necesites un estabilizador o una pieza de combo específica.</li>
+                    <li>Mantén un fondo de emergencia para opciones críticas de la tienda al final del día.</li>
+                </ul>
+
+                <p><strong>Profundización:</strong> En días tempranos compra lo que ayuda a la consistencia (estabilizadores, convertidores individuales). A media partida, pivota hacia reliquias que habiliten victorias de mayor varianza; en late-game busca reliquias multiplicativas y finishers que exploten tu motor establecido.</p>
+                <p><strong>Ejemplo:</strong> Si estás corto de estabilizadores, compra uno temprano y céntrate en jugadas de bajo riesgo—esto aumenta la probabilidad de sobrevivir hasta poder comprar una reliquia clave. Si tienes identidad clara (ej. enfoque Fire), invierte en cartas y reliquias que compongan esa identidad en lugar de mejoras pequeñas y sin relación.</p>
+            `,
+            'help.nav.guides': '📚 Guides',
+            'help.nav.tips': '💡 Tips',
+            'help.nav.shortcuts': '⌨️ Shortcuts',
+            'help.search': 'Buscar guías y consejos...',
+            'help.expand_all': 'Expandir todo',
+            'help.collapse_all': 'Colapsar todo',
+            'shortcut.h': 'H o ? — Abrir/cerrar Ayuda',
+            'shortcut.esc': 'Esc — Cerrar overlay actual',
+            'shortcut.click_card': 'Clic en carta — Jugarla',
+            'shortcut.pin_icon': 'Icono Pin — Mover a Pocket',
+            'btn.close': 'Cerrar',
+            'btn.close_view': 'Cerrar vista',
+            'tip.1': '📌 Guarda una carta clave en Pocket para proteger un combo.',
+            'tip.2': '🚮 Churn para quitar cartas malas al inicio, pero no dejes tu Estabilidad muy baja.',
+            'tip.3': '⚖️ Apunta a diferencia ≤1 para conseguir recompensas "Obra Maestra".',
+            'tip.4': '🧂 Los estabilizadores son excelentes en late-game para mantener la caldera sana.',
+            'tip.5': '🪙 Vende duplicados básicos en la tienda para oro rápido entre días.',
+            'tip.6': '🔥 Reserva conjuntos valiosos para el jefe para maximizar daño.',
+            'tip.7': '🔁 Si una reliquia hace churn gratis, puedes ser más agresivo con saltos.',
+            'tip.8': '💡 Observa las pistas flotantes — a menudo indican cuando un combo se activa.',
+            'btn.next_day': 'Siguiente Día',
+            'msg.boss_fight': '¡PELEA CONTRA JEFE!',
+            'msg.day_complete': 'Día completado',
+            'msg.empty': '¡Vacío!',
+            'msg.reborn': '¡Renacido!',
+            'msg.powered': '¡Potenciado!',
+            'msg.combo': '¡Combo!',
+            'msg.not_enough_stab': '¡No hay suficiente Estabilidad!',
+            'msg.pocket_full': '¡Pocket lleno!',
+            'msg.free': '¡Gratis!',
+            'msg.need_stab': '¡Necesitas 1 Estabilidad!',
+            'msg.free_churn': 'Churn Gratis',
+            'label.stability': 'ESTABILIDAD',
+            'label.pocket': 'POCKET',
+            'label.up_next': 'Siguiente'
+        }
+    };
+    this._translations = T;
+    this._current = T[lang] || {};
+    setTimeout(() => {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.dataset.i18n;
+            if (!this._current || !this._current[key]) return;
+            const val = this._current[key];
+            const tag = el.tagName.toLowerCase();
+            if (tag === 'input' || tag === 'textarea') {
+                el.placeholder = val;
+            } else if (tag === 'img') {
+                // allow images to have alt text translations (if provided)
+                if (el.getAttribute('data-i18n-alt')) el.alt = val;
+                else el.innerHTML = val;
+            } else {
+                // Use innerHTML for rich HTML strings (guide bodies) and innerText for simple labels
+                if (val.trim().startsWith('<')) el.innerHTML = val;
+                else el.innerText = val;
+            }
+        });
+        const sel = document.getElementById('lang-select'); if (sel) sel.value = lang;
+
+        // Update dynamic labels set via JS
+        const btn = document.getElementById('btn-main-action');
+        if (btn) {
+            if (btn.className.includes('btn-brew')) btn.innerText = this.t('btn.serve');
+            else if (btn.className.includes('btn-attack')) btn.innerText = this.t('btn.attack');
+        }
+        const ov = document.getElementById('ov-title'); if (ov) ov.innerText = this.t('ov.day_complete');
+        // Update boss header if active
+        const bossName = document.getElementById('boss-name'); if (bossName && this.bossActive) bossName.innerText = `⚠ ${this.boss.name} ⚠`;
+    }, 0);
+};
+
+Game.prototype.t = function(key) {
+    return (this._current && this._current[key]) || key;
+};
+
 const game = new Game();
 game.init();
+// Apply saved language on startup
+const savedLang = localStorage.getItem('va_lang') || 'en';
+game.setLanguage(savedLang);
+// Show main menu
+setTimeout(()=> game.showMainMenu(), 60);
+// Hook global language selector (works outside Help overlay)
+const globalLang = document.getElementById('lang-select');
+if (globalLang) {
+    globalLang.value = savedLang;
+    globalLang.addEventListener('change', (ev) => game.setLanguage(ev.target.value));
+}
 </script>
 </body>
 </html>
